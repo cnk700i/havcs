@@ -17,7 +17,7 @@ aihome:
     - jdwhale                     # 叮咚音箱支持
   http:                           # 音箱插件http服务，自建测试技能接入用，否则可以删除
     expire_in_hours: 24             # token超时时间
-  mqtt:                           # 音箱技能
+  mqtt:                           # mqtt中转，需要前往https://aihome.ljr.im/account获取账号
     broker: mqtt.ljr.im             # MQTT服务器域名，默认即可
     port: 28883                     # MQTT服务器端口，默认即可
     app_key: xxx                    # 注册账号的用户名
