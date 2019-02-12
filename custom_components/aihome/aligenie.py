@@ -12,10 +12,11 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
-_LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
 import copy
 from .util import (device_id_to_entity_id,entity_id_to_device_id)
+
+_LOGGER = logging.getLogger(__name__)
+# _LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
 DOMAIN       = 'aligenie'
@@ -264,7 +265,7 @@ class Aligenie:
                 'zone': zone,
                 'model': friendly_name,
                 'brand': 'HomeAssistant',
-                'icon': 'https://home-assistant.io/demo/favicon-192x192.png',
+                'icon': 'https://d33wubrfki0l68.cloudfront.net/cbf939aa9147fbe89f0a8db2707b5ffea6c192cf/c7c55/images/favicon-192x192-full.png',
                 'properties': properties if properties else [],
                 'actions': actions,
                 #'actions': ['TurnOn', 'TurnOff', 'Query', action] if action == 'QueryPowerState' else ['Query', action],

@@ -15,8 +15,10 @@ from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
 import copy
 from .util import (device_id_to_entity_id,entity_id_to_device_id)
+
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+# _LOGGER.setLevel(logging.DEBUG)
+
 AI_HOME = True
 DOMAIN = 'dueros'
 
@@ -296,7 +298,7 @@ class Dueros:
                 'applianceTypes': deviceTypes,
                 'isReachable': True,
                 'manufacturerName': 'HomeAssistant',
-                'modelName': 'HomeAssistantLight',
+                'modelName': 'HomeAssistant',
                 'version': '1.0',
                 'actions': actions,
                 'attributes': device_attr,

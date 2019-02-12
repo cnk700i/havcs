@@ -15,11 +15,10 @@ from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
 
 from .util import (device_id_to_entity_id,entity_id_to_device_id)
-
-
 import copy
+
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+# _LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
 DOMAIN  = 'jdwhale'
@@ -243,8 +242,8 @@ class Jdwhale:
                 continue
 
             properties,actions = self._guessPropertyAndAction(entity_id, attributes, state.state)
-            if properties is None:
-                continue
+            # if properties is None:
+            #     continue
             if deviceType == 'sensor':
                 if attributes.get('jdwhale_sensor_group') is None:
                     continue
@@ -270,17 +269,8 @@ class Jdwhale:
                 'modelName': 'HomeAssistantDevice',
                 })
 
-        #for sensor in devices:
-            #if sensor['deviceType'] == 'sensor':
-                #_LOGGER.info(json.dumps(sensor, indent=2, ensure_ascii=False))
         return {'deviceInfo': devices}
-        # return {
-        #     "discoveredAppliances": [],
-        #     "discoveredGroups": [{
-        #         "groupName": "myGroup",
-        #         "applianceIds": []
-        #     }]
-        # }
+
 
     async def _controlDevice(self, cmnd, payload):
         entity_id = device_id_to_entity_id(payload['deviceId'])
