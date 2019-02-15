@@ -12,8 +12,9 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
+
+from .util import (decrypt_device_id,encrypt_entity_id)
 import copy
-from .util import (device_id_to_entity_id,entity_id_to_device_id)
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -259,7 +260,7 @@ class Aligenie:
                 actions = list(set(actions))
 
             devices.append({
-                'deviceId': entity_id_to_device_id(entity_id),
+                'deviceId': encrypt_entity_id(entity_id),
                 'deviceName': deviceName,
                 'deviceType': deviceType,
                 'zone': zone,
@@ -278,7 +279,7 @@ class Aligenie:
         return {'devices': devices}
 
     async def _controlDevice(self, cmnd, payload):
-        entity_id = device_id_to_entity_id(payload['deviceId'])
+        entity_id = decrypt_device_id(payload['deviceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
         if domain in self._TRANSLATIONS.keys():
@@ -297,7 +298,7 @@ class Aligenie:
         return {} if result else self._errorResult('IOT_DEVICE_OFFLINE')
 
     def _queryDevice(self, cmnd, payload):
-        entity_id = device_id_to_entity_id(payload['deviceId'])
+        entity_id = decrypt_device_id(payload['deviceId'])
         state = self._hass.states.get(entity_id)
 
         if entity_id.startswith('sensor.'):

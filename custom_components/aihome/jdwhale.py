@@ -14,7 +14,7 @@ from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
 
-from .util import (device_id_to_entity_id,entity_id_to_device_id)
+from .util import (decrypt_device_id,encrypt_entity_id)
 import copy
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,7 +22,6 @@ _LOGGER = logging.getLogger(__name__)
 
 AI_HOME = True
 DOMAIN  = 'jdwhale'
-
 
 async def async_setup(hass, config):
     hass.http.register_view(JdWhaleGateVidw(hass))
@@ -126,15 +125,15 @@ class Jdwhale:
             'Pause': '暂停',
             'Previous': '上一个',
             'SetMode': '设置%s模式',
-            'Query': '查询%s状态',
-            'QueryPowerState': '查询%s电源状态',
-            'QueryColor': '查询%s颜色状态',
-            'QueryTemperature': '查询%s温度',
-            'QueryWindspeed': '查询%s风速',
-            'QueryBrightness': '查询%s亮度',
-            'QueryHumidity': '查询%s湿度',
-            'QueryPM25': '查询%sPM2.5',
-            'QueryMode': '查询%s模式',
+            'Query': '查询%s的状态',
+            'QueryPowerState': '查询%s的电源状态',
+            'QueryColor': '查询%s的颜色',
+            'QueryTemperature': '查询%s的温度',
+            'QueryWindspeed': '查询%s的风速',
+            'QueryBrightness': '查询%s的亮度',
+            'QueryHumidity': '查询%s的湿度',
+            'QueryPM25': '查询%s的PM2.5',
+            'QueryMode': '查询%s的模式',
         }
         self._TRANSLATIONS = {
             'cover': {
@@ -260,7 +259,7 @@ class Jdwhale:
             devices.append({
                 'actions': actions,
                 'controlSpeech': [self._ALL_ACTIONS.get(action,'')%(friendly_name) for action in actions ],
-                'deviceId': entity_id_to_device_id(entity_id),
+                'deviceId': encrypt_entity_id(entity_id),
                 'deviceTypes': deviceType,
                 'extensions': {'manufacturerName': 'HomeAssistant'},
                 'friendlyDescription': friendly_name,
@@ -273,7 +272,7 @@ class Jdwhale:
 
 
     async def _controlDevice(self, cmnd, payload):
-        entity_id = device_id_to_entity_id(payload['deviceId'])
+        entity_id = decrypt_device_id(payload['deviceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
         if domain in self._TRANSLATIONS.keys():
@@ -294,7 +293,7 @@ class Jdwhale:
 
 
     def _queryDevice(self, cmnd, payload):
-        entity_id = device_id_to_entity_id(payload['deviceId'])
+        entity_id = decrypt_device_id(payload['deviceId'])
         state = self._hass.states.get(entity_id)
 
         if entity_id.startswith('sensor.'):
@@ -316,8 +315,8 @@ class Jdwhale:
                         properties.append(prop)
             return properties if properties else self._errorResult('IOT_DEVICE_OFFLINE')
         else:
-            if state is not None or state.state != 'unavailable':
-                return {'name':'PowerState', 'value':state.state}
+            if state is not None and state.state != 'unavailable':
+                return {'name':'PowerState', 'value':state.state} if cmnd != 'QueryRequest' else [{'name':'PowerState', 'value':state.state}]
         return self._errorResult('IOT_DEVICE_OFFLINE')
 
     def _getControlService(self, action):

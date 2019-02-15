@@ -3,7 +3,7 @@ author: cnk700i
 blog: ljr.im
 tested On HA version: 0.82.1
 """
-from .util import AESCipher
+from . import util as aihome_util
 from typing import cast
 import jwt
 from datetime import timedelta
@@ -60,6 +60,8 @@ CONF_CLIENT_CERT = 'client_cert'
 CONF_TLS_INSECURE = 'tls_insecure'
 CONF_TLS_VERSION = 'tls_version'
 CONF_ALLOWED_URI = 'allowed_uri'
+CONF_ENTITY_KEY = 'entity_key'
+CONF_HA_URL = 'ha_url'
 
 CONF_HTTP = 'http'
 CONF_MQTT = 'mqtt'
@@ -87,9 +89,9 @@ MQTT_SCHEMA = vol.Schema({
         vol.Optional(CONF_KEEPALIVE, default=DEFAULT_KEEPALIVE): vol.All(vol.Coerce(int), vol.Range(min=15)),
         vol.Optional(CONF_BROKER, default=DEFAULT_BROKER): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-        vol.Optional(CONF_APP_KEY): cv.string,
-        vol.Optional(CONF_APP_SECRET): cv.string,
-        vol.Optional(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
+        vol.Required(CONF_APP_KEY): cv.string,
+        vol.Required(CONF_APP_SECRET): cv.string,
+        vol.Required(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
         vol.Inclusive(CONF_CLIENT_KEY, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
         vol.Inclusive(CONF_CLIENT_CERT, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
         vol.Optional(CONF_TLS_INSECURE): cv.boolean,
@@ -97,6 +99,8 @@ MQTT_SCHEMA = vol.Schema({
         vol.Optional(CONF_PROTOCOL, default=DEFAULT_PROTOCOL): vol.All(cv.string, vol.In([PROTOCOL_31, PROTOCOL_311])),
         vol.Optional(CONF_TOPIC): cv.string,
         vol.Optional(CONF_ALLOWED_URI, default=[]): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
+        vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
+        vol.Optional(CONF_HA_URL, default='http://localhost:8123'): cv.string,
 }, extra=vol.ALLOW_EXTRA)
 HTTP_SCHEMA = vol.Schema({
     vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
@@ -111,6 +115,7 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
+
     conf = config.get(DOMAIN, {})  # type: ConfigType
  
     if conf is None:
@@ -145,7 +150,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
                 view = getattr(module, 'AliGenieGateView')()
                 hass.http.register_view(view)
             EXPIRATION[p] = timedelta(hours=conf[CONF_HTTP].get(CONF_EXPIRE_IN_HOURS))
-        if CONF_MQTT in conf:
+        if CONF_MQTT in conf:            
+            aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
             if module.AI_HOME is not None:
                 HANDLER[p] = module.createHandler(hass)
@@ -189,6 +195,7 @@ async def async_setup_entry(hass, entry):
     tls_insecure = conf.get(CONF_TLS_INSECURE)
     protocol = conf[CONF_PROTOCOL]
     allowed_uri = conf.get(CONF_ALLOWED_URI)
+    ha_url = conf.get(CONF_HA_URL)
     decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]
 
     # For cloudmqtt.com, secured connection, auto fill in certificate
@@ -257,7 +264,7 @@ async def async_setup_entry(hass, entry):
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_stop_mqtt)
 
     async def localHttp(resData,topic):
-        url = 'https://localhost:8123'+resData['uri']
+        url = ha_url + resData['uri']
         if('content' in resData):
             _LOGGER.debug('---POST---')
             if 'AliGenie' in resData['content']:
@@ -325,7 +332,7 @@ async def async_setup_entry(hass, entry):
                 'msgId': resData.get('msgId')
             }
         _LOGGER.debug("%s response[%s]: [%s]", resData['uri'].split('/')[-1].split('?')[0], resData.get('msgId'), response.headers['Content-Type'], )
-        res = AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
+        res = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
 
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
@@ -354,7 +361,7 @@ async def async_setup_entry(hass, entry):
                 'content': json.dumps(response).encode('utf-8').decode('unicode_escape'),
                 'msgId': resData.get('msgId')
             }
-        res = AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
+        res = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
 
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
         
@@ -364,7 +371,7 @@ async def async_setup_entry(hass, entry):
         """Handle new MQTT state messages."""
         # _LOGGER.debug('get encrypt message: \n {}'.format(payload))
         try:
-            payload = AESCipher(decrypt_key).decrypt(payload)
+            payload = aihome_util.AESCipher(decrypt_key).decrypt(payload)
             req = json.loads(payload)
             _LOGGER.debug("[%s]raw message: %s", req.get('platform'), req)
             if req.get('platform') == 'h2m2h':

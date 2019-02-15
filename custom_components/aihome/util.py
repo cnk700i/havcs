@@ -3,14 +3,15 @@ from base64 import b64decode
 from base64 import b64encode
 import homeassistant.util.color as color_util
 import time
+import logging
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.DEBUG)
 
-KEY = 'AJPn3ykkrZDA7Sy2'
-
+ENTITY_KEY = ''
 class AESCipher:
     """
     Tested under Python 3.x and PyCrypto 2.6.1.
     """
-
     def __init__(self, key):
         #加密需要的key值
         self.key=key
@@ -35,10 +36,10 @@ class AESCipher:
         cipher = AES.new(self.key, self.mode, b'0000000000000000')
         return unpad(cipher.decrypt(enc)).decode('utf8')
 
-def device_id_to_entity_id(device_id):
-    return AESCipher(KEY.encode('utf-8')).decrypt(device_id)
-def entity_id_to_device_id(entity_id):
-    return AESCipher(KEY.encode('utf-8')).encrypt(entity_id.encode('utf8'))
+def decrypt_device_id(device_id):
+    return AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
+def encrypt_entity_id(entity_id):
+    return AESCipher(ENTITY_KEY.encode('utf-8')).encrypt(entity_id.encode('utf8'))
 
 def hsv2rgb(hsvColorDic):
 

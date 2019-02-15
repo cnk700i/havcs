@@ -13,8 +13,9 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
+
 import copy
-from .util import (device_id_to_entity_id,entity_id_to_device_id)
+from .util import (decrypt_device_id,encrypt_entity_id)
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -291,7 +292,7 @@ class Dueros:
                 deviceTypes = ['AIR_MONITOR']
 
             devices.append({
-                'applianceId': entity_id_to_device_id(entity_id),
+                'applianceId': encrypt_entity_id(entity_id),
                 'friendlyName': friendly_name,
                 'friendlyDescription': friendly_name,
                 'additionalApplianceDetails': [],
@@ -318,7 +319,7 @@ class Dueros:
 
     async def _controlDevice(self, action, payload):
         applianceDic = payload['appliance']
-        entity_id = device_id_to_entity_id(applianceDic['applianceId'])
+        entity_id = decrypt_device_id(applianceDic['applianceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
         if domain in self._TRANSLATIONS.keys():
@@ -340,7 +341,7 @@ class Dueros:
 
     def _queryDevice(self, cmnd, payload):
         applianceDic = payload['appliance']
-        entity_id = device_id_to_entity_id(applianceDic['applianceId'])
+        entity_id = decrypt_device_id(applianceDic['applianceId'])
         state = self._hass.states.get(entity_id)
 
         if entity_id.startswith('sensor.'):
