@@ -131,6 +131,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
             DOMAIN, context={'source': config_entries.SOURCE_IMPORT},
             data={}
         ))
+    if CONF_MQTT in conf:            
+        aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
 
     global EXPIRATION
     platform = conf[CONF_PLATFORM]
@@ -150,8 +152,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
                 view = getattr(module, 'AliGenieGateView')()
                 hass.http.register_view(view)
             EXPIRATION[p] = timedelta(hours=conf[CONF_HTTP].get(CONF_EXPIRE_IN_HOURS))
-        if CONF_MQTT in conf:            
-            aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
+        if CONF_MQTT in conf:
             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
             if module.AI_HOME is not None:
                 HANDLER[p] = module.createHandler(hass)
