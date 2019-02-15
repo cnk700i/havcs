@@ -14,20 +14,22 @@
 ```yaml
 #{HA配置目录}/configuration.yaml
 aihome:
-  platform:
-    - aligenie                    # 天猫精灵支持
-    - dueros                      # 小度音箱支持
-    - jdwhale                     # 叮咚音箱支持
-  http:                           # 音箱插件http服务，自建测试技能接入用，否则可以删除
-    expire_in_hours: 24             # token超时时间
-  mqtt:                           # mqtt中转，需要前往https://aihome.ljr.im/account获取账号
-    broker: mqtt.ljr.im             # MQTT服务器域名，默认即可
-    port: 28883                     # MQTT服务器端口，默认即可
-    app_key: xxx                    # 注册账号的用户名
-    app_secret: xxx                 # 注册账号的密码
-    certificate: xxx\custom_components\aihome\ca.crt             # 需要填插件内ca.crt的全路径
-    tls_insecure: true              # 默认
-    allowed_uri:                    # 自建测试技能接入有效
+  platform:                         # 智能音箱插件服务
+    - aligenie                        # 天猫精灵
+    - dueros                          # 小度
+    - jdwhale                         # 叮咚
+  http:                             # 启用http网关功能（模式一、模式二需设置）
+    expire_in_hours: 24               # token超时时间，单位小时，不设置则默认24h
+  mqtt:                             # 启用mqtt对接功能（模式二、模式三需设置）
+    broker: mqtt.ljr.im               # MQTT服务器域名，不设置则默认为mqtt.ljr.im
+    port: 28883                       # MQTT服务器端口，不设置则默认为28883
+    app_key: xxx                      # 必填，https://ai-home.ljr.im/account/获取
+    app_secret: xxx                   # 必填，https://ai-home.ljr.im/account/获取
+    entity_key: xxx                   # 必填，加密entity_id的key，自由设置16位字符串
+    certificate: xxx/ca.crt           # 必填，插件内ca.crt文件完整路径
+    tls_insecure: true                # 必填，不校验证书主机名，因为ca.crt是自签证书，设置true
+    ha_url: https://localhost:8123    # 本地HA访问网址，不设置则默认为http://localhost:8123
+    allowed_uri:                      # http请求白名单，不设置则默认不限制（模式一、模式二才有效）
       - /auth/token
       - /dueros_gate
       - /aligenie_gate
