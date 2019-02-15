@@ -263,7 +263,7 @@ async def async_setup_entry(hass, entry):
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_stop_mqtt)
 
-    async def localHttp(resData,topic):
+    async def async_http_handler(resData,topic):
         url = ha_url + resData['uri']
         if('content' in resData):
             _LOGGER.debug('---POST---')
@@ -290,7 +290,6 @@ async def async_setup_entry(hass, entry):
                                 break
                 except jwt.InvalidTokenError:
                     pass
-
  
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
@@ -336,7 +335,7 @@ async def async_setup_entry(hass, entry):
 
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
-    async def localService(resData,topic):
+    async def async_module_handler(resData,topic):
         if 'platform' in resData:
             platform = resData['platform']
         elif 'AliGenie' in resData['content']:
@@ -365,6 +364,15 @@ async def async_setup_entry(hass, entry):
 
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
         
+    async def async_publish_error(resData,topic):
+        res = {
+                'headers': {'Content-Type': 'application/json;charset=utf-8'},
+                'status': 404,
+                'content': '',
+                'msgId': resData.get('msgId')
+            }                    
+        res = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
+        await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
     @callback
     def message_received(topic, payload, qos):
@@ -377,10 +385,11 @@ async def async_setup_entry(hass, entry):
             if req.get('platform') == 'h2m2h':
                 if(allowed_uri and req.get('uri','/').split('?')[0] not in allowed_uri):
                     _LOGGER.debug('uri not allowed: %s', req.get('uri','/'))
+                    hass.add_job(async_publish_error(req, topic))
                     return
-                hass.add_job(localHttp(req, topic))
+                hass.add_job(async_http_handler(req, topic))
             else:
-                hass.add_job(localService(req, topic))
+                hass.add_job(async_module_handler(req, topic))
 
         except (JSONDecodeError,UnicodeDecodeError,binascii.Error):
             import sys
