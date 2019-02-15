@@ -14,9 +14,9 @@
 ```yaml
 #{HA配置目录}/configuration.yaml
 aihome:
-  platform:                         # 智能音箱插件服务
-    - aligenie                        # 天猫精灵
-    - dueros                          # 小度
+  platform:                         # 加载内置智能音箱插件服务
+    # - aligenie                        # 天猫精灵
+    # - dueros                          # 小度
     - jdwhale                         # 叮咚
   http:                             # 启用http网关功能（模式一、模式二需设置）
     expire_in_hours: 24               # token超时时间，单位小时，不设置则默认24h
