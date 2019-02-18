@@ -1,3 +1,5 @@
+# 备注
+插件使用有点复杂，有疑问请加QQ群307773400交流。
 # 插件说明
 对目前智能音箱接入插件进行了整合，其中天猫精灵和小度音箱插件基于瀚思彼岸论坛[@feversky](https://bbs.hassbian.com/thread-4758-1-1.html)和[@zhkufish](https://bbs.hassbian.com/thread-5417-1-1.html)插件进行小修改，叮咚音箱插件参考前两个插件编写。
 本插件有三种使用模式：
@@ -36,6 +38,8 @@ aihome:
       - /jdwhale_gate
      
 ```
+# 设备配置
+待施工
 
 # 更新日志
 HA 0.86.4 和 HA 0.82.1，本地单机测试。
