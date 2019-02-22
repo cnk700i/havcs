@@ -190,7 +190,7 @@ class Aligenie:
             namespace = header['namespace']
             if namespace == 'AliGenie.Iot.Device.Discovery':
                 discovery_devices, _ = self._discoveryDevice()
-                return {'devices': discovery_devices}
+                result = {'devices': discovery_devices}
             elif namespace == 'AliGenie.Iot.Device.Control':
                 result = await self._controlDevice(name, payload)
             elif namespace == 'AliGenie.Iot.Device.Query':
