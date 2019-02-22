@@ -26,7 +26,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.core import callback, Context, Event
 from homeassistant.components import mqtt
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
-from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, EVENT_HOMEASSISTANT_STOP)
+from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP)
 from . import config_flow
 from voluptuous.humanize import humanize_error
 import traceback
@@ -47,6 +47,7 @@ EXPIRATION = {}
 
 DATA_AIHOME_CONFIG = 'aihome_config'
 DATA_AIHOME_MQTT = 'aihome_mqtt'
+DATA_AIHOME_BIND_MANAGER = 'aihome_bind_manager'
 
 CONF_APP_KEY = 'app_key'
 CONF_APP_SECRET = 'app_secret'
@@ -134,8 +135,11 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     if CONF_MQTT in conf:            
         aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
 
+
     global EXPIRATION
     platform = conf[CONF_PLATFORM]
+    manager = hass.data[DATA_AIHOME_BIND_MANAGER] = aihome_util.BindManager(hass,platform)
+    await manager.async_load()
 
     for p in platform:
         if CONF_HTTP in conf:
@@ -257,6 +261,29 @@ async def async_setup_entry(hass, entry):
 
     if not success:
         return False
+
+    async def async_report_device(event: Event):
+        for uuid in hass.data['aihome_bind_manager'].discovery:
+            p_user_id = uuid.split('@')[0]
+            platform = uuid.split('@')[1]
+            if getattr(HANDLER.get(platform), 'should_report') and hasattr(HANDLER.get(platform), 'report_device'):
+                devices,entity_ids = HANDLER[platform]._discoveryDevice()
+                bind_entity_ids,unbind_entity_ids = await hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids,platform, p_user_id,True)
+                payload = await HANDLER[platform].report_device(p_user_id, entity_ids , unbind_entity_ids, devices)
+                _LOGGER.debug('---report request: bind_entity_ids:%s, unbind_entity_ids:%s', bind_entity_ids, unbind_entity_ids)
+
+                if payload:
+                    url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
+                    data = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
+                    try:
+                        session = async_get_clientsession(hass, verify_ssl=False)
+                        with async_timeout.timeout(5, loop=hass.loop):
+                            response = await session.post(url, data=data)
+                            _LOGGER.debug('---report response:%s',await response.text())
+                    except(asyncio.TimeoutError, aiohttp.ClientError):
+                        _LOGGER.error("Error while accessing: %s", url)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, async_report_device)
 
     async def async_stop_mqtt(event: Event):
         """Stop MQTT component."""

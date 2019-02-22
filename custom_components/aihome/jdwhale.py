@@ -1,6 +1,6 @@
 import json, math, time
 import logging
-
+import uuid
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
@@ -22,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 AI_HOME = True
 DOMAIN  = 'jdwhale'
+REPORT_WHEN_STARUP = True
 
 async def async_setup(hass, config):
     hass.http.register_view(JdWhaleGateVidw(hass))
@@ -36,7 +37,7 @@ class JdWhaleGateVidw(HomeAssistantView):
 
     def __init__(self, hass):
         """Initialize the token view."""
-        self._jdwhale = Jdwhale(hass)
+        self._jdwhale = Jdwhale(hass,['http'])
         
     async def post(self, request):
         """Update state of entity."""
@@ -51,10 +52,14 @@ class JdWhaleGateVidw(HomeAssistantView):
         return self.json(response)
 
 def createHandler(hass):
-    return Jdwhale(hass)
+    mode = ['handler']
+    if REPORT_WHEN_STARUP:
+        mode.append('report_when_starup')
+    return Jdwhale(hass, mode)
 
 class Jdwhale:
-    def __init__(self, hass):
+    def __init__(self, hass, mode):
+        self._mode = mode
         self._hass = hass
         self._DEVICE_TYPES = {
             'WASHING_MACHINE': '洗衣机',
@@ -163,6 +168,7 @@ class Jdwhale:
             }
 
         }
+            
     def _errorResult(self, errorCode, messsage=None):
         """Generate error result"""
         messages = {
@@ -181,18 +187,21 @@ class Jdwhale:
 
     async def handleRequest(self, data, ignoreToken = False):
         """Handle request"""
-        _LOGGER.info("Handle Request: %s", data)
+        # _LOGGER.info("Handle Request: %s", data)
         header = data['header']
         payload = data['payload']
         properties = None
         name = header['name']
-
+        p_user_id = header['userId']
+        uuid = p_user_id+'@'+DOMAIN
 
         token = await self._hass.auth.async_validate_access_token(payload['accessToken'])
         if ignoreToken or token is not None:
             namespace = header['namespace']
             if namespace == 'Alpha.Iot.Device.Discover':
-                result = self._discoveryDevice()
+                discovery_devices,entity_ids = self._discoveryDevice()
+                result = {'deviceInfo': discovery_devices}
+                await self._hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif namespace == 'Alpha.Iot.Device.Control':
                 result = await self._controlDevice(name, payload)
             elif namespace == 'Alpha.Iot.Device.Query':
@@ -216,13 +225,14 @@ class Jdwhale:
 
         _LOGGER.info("Respnose: %s", response)
         return response
-
+  
     def _discoveryDevice(self):
 
         states = self._hass.states.async_all()
         # groups_ttributes = groupsAttributes(states)
 
         devices = []
+        entity_ids = []
 
         for state in states:
             attributes = state.attributes
@@ -235,7 +245,7 @@ class Jdwhale:
                 continue
 
             entity_id = state.entity_id
-
+            # _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
             deviceType = self._guessDeviceType(entity_id, attributes)
             if deviceType is None:
                 continue
@@ -246,10 +256,10 @@ class Jdwhale:
             if deviceType == 'sensor':
                 if attributes.get('jdwhale_sensor_group') is None:
                     continue
-                _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
+                # _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
 
-                entity_ids = self._hass.states.get(attributes.get('jdwhale_sensor_group')).attributes.get('entity_id')
-                for sensor in entity_ids:
+                sensor_ids = self._hass.states.get(attributes.get('jdwhale_sensor_group')).attributes.get('entity_id')
+                for sensor in sensor_ids:
                     if sensor.startswith('sensor.'):
                         prop,action = self._guessPropertyAndAction(sensor, self._hass.states.get(sensor).attributes, self._hass.states.get(sensor).state)
                         actions += action
@@ -267,9 +277,45 @@ class Jdwhale:
                 'isReachable': '1',
                 'modelName': 'HomeAssistantDevice',
                 })
+            entity_ids.append(entity_id)
+        
+        return devices, entity_ids
 
-        return {'deviceInfo': devices}
-
+    async def report_device(self,p_user_id, bind_entity_ids, unbind_entity_ids, devices):
+        payload = []
+        for device in devices:
+            entity_id = decrypt_device_id(device['deviceId'])
+            if entity_id in bind_entity_ids:
+                bind_payload  ={
+                    "header": {
+                        "namespace": "Alpha.Iot.Device.Report",
+                        "name": "BindDeviceEvent",
+                        "messageId": str(uuid.uuid4()),
+                        "payLoadVersion": "1"
+                        },
+                    "payload": {
+                        "skillId": "",
+                        "userId": p_user_id,
+                        "deviceInfo": device
+                    }
+                }
+                payload.append(bind_payload)
+        for entity_id in unbind_entity_ids:
+            unbind_payload ={
+                "header": {
+                    "namespace": "Alpha.Iot.Device.Report",
+                    "name": "UnBindDeviceEvent",
+                    "messageId": str(uuid.uuid4()),
+                    "payLoadVersion": "1"
+                },
+                "payload": {
+                    "skillId": "",
+                    "userId": p_user_id,
+                    "deviceId":encrypt_entity_id(entity_id)
+                }
+            }
+            payload.append(unbind_payload)
+        return payload
 
     async def _controlDevice(self, cmnd, payload):
         entity_id = decrypt_device_id(payload['deviceId'])
@@ -322,7 +368,7 @@ class Jdwhale:
     def _getControlService(self, action):
         i = 0
         service = ''
-        for c in action:
+        for c in action.split('Request')[0]:
             service += (('_' if i else '') + c.lower()) if c.isupper() else c
             i += 1
         return service 
@@ -400,6 +446,10 @@ class Jdwhale:
                 state = 'on'
         properties = {'name': name, 'value': state} if name is not None else None
         return properties, actions
+
+    @property
+    def should_report(self):
+        return True if 'report_when_starup' in self._mode else False
 
         
     

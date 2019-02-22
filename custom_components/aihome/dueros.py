@@ -228,7 +228,8 @@ class Dueros:
             namespace = header['namespace']
             if namespace == 'DuerOS.ConnectedHome.Discovery':
                 name = 'DiscoverAppliancesResponse'
-                result = self._discoveryDevice()
+                discovery_devices,_ = self._discoveryDevice()
+                result = {'discoveredAppliances': discovery_devices}
             elif namespace == 'DuerOS.ConnectedHome.Control':
                 result = await self._controlDevice(name, payload)
                 name = name.replace('Request', 'Confirmation') # fix
@@ -258,7 +259,7 @@ class Dueros:
         # groups_ttributes = groupsAttributes(states)
 
         devices = []
-
+        entity_ids = []
         for state in states:
             attributes = state.attributes
 
@@ -282,8 +283,8 @@ class Dueros:
                 if attributes.get('dueros_sensor_group') is None:
                     continue
 
-                entity_ids = self._hass.states.get(attributes.get('dueros_sensor_group')).attributes.get('entity_id')
-                for sensor in entity_ids:
+                sensor_ids = self._hass.states.get(attributes.get('dueros_sensor_group')).attributes.get('entity_id')
+                for sensor in sensor_ids:
                     if sensor.startswith('sensor.'):
                         prop,action = self._guessPropertyAndAction(sensor, self._hass.states.get(sensor).attributes, self._hass.states.get(sensor).state)
                         actions += action
@@ -304,11 +305,9 @@ class Dueros:
                 'actions': actions,
                 'attributes': device_attr,
                 })
+            entity_ids.append(entity_id)
+        return devices, entity_ids
 
-        #for sensor in devices:
-            #if sensor['deviceType'] == 'sensor':
-                #_LOGGER.info(json.dumps(sensor, indent=2, ensure_ascii=False))
-        return {'discoveredAppliances': devices}
         # return {
         #     "discoveredAppliances": [],
         #     "discoveredGroups": [{
