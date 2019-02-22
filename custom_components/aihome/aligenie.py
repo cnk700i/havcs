@@ -189,7 +189,8 @@ class Aligenie:
         if ignoreToken or token is not None:
             namespace = header['namespace']
             if namespace == 'AliGenie.Iot.Device.Discovery':
-                result = self._discoveryDevice()
+                discovery_devices, _ = self._discoveryDevice()
+                return {'devices': discovery_devices}
             elif namespace == 'AliGenie.Iot.Device.Control':
                 result = await self._controlDevice(name, payload)
             elif namespace == 'AliGenie.Iot.Device.Query':
@@ -221,10 +222,11 @@ class Aligenie:
         groups_ttributes = self._groupsAttributes(states)
 
         devices = []
+        entity_ids = []
         for state in states:
             attributes = state.attributes
 
-            if attributes.get('hidden') or attributes.get('hagenie_hidden'):
+            if not attributes.get('aihome_device', False):
                 continue
 
             friendly_name = attributes.get('friendly_name')
@@ -241,18 +243,18 @@ class Aligenie:
                 continue
 
             zone = self._guessZone(entity_id, attributes, groups_ttributes, _places)
-            if zone is None:
-                continue
+            # if zone is None:
+            #     # continue
 
             properties,actions = self._guessPropertyAndAction(entity_id, attributes, state.state)
 
             _LOGGER.debug('-----entity_id: %s, deviceType: %s, attributes: %s', entity_id, deviceType ,attributes)
             if deviceType == 'sensor':
-                if attributes.get('aligenie_sensor_group') is None:
+                if attributes.get('aihome_sensor_group') is None:
                     continue
                 _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
-                entity_ids = self._hass.states.get(attributes.get('aligenie_sensor_group')).attributes.get('entity_id')
-                for sensor in entity_ids:
+                sensor_ids = self._hass.states.get(attributes.get('aihome_sensor_group')).attributes.get('entity_id')
+                for sensor in sensor_ids:
                     if sensor.startswith('sensor.'):
                         prop,action = self._guessPropertyAndAction(sensor, self._hass.states.get(sensor).attributes, self._hass.states.get(sensor).state)
                         actions += action
@@ -272,11 +274,9 @@ class Aligenie:
                 #'actions': ['TurnOn', 'TurnOff', 'Query', action] if action == 'QueryPowerState' else ['Query', action],
                 #'extensions':{'extension1':'','extension2':''}
                 })
+            entity_ids.append(entity_id)
+        return devices, entity_ids
 
-        #for sensor in devices:
-            #if sensor['deviceType'] == 'sensor':
-                #_LOGGER.info(json.dumps(sensor, indent=2, ensure_ascii=False))
-        return {'devices': devices}
 
     async def _controlDevice(self, cmnd, payload):
         entity_id = decrypt_device_id(payload['deviceId'])
@@ -302,13 +302,13 @@ class Aligenie:
         state = self._hass.states.get(entity_id)
 
         if entity_id.startswith('sensor.'):
-            entity_ids = self._hass.states.get(state.attributes.get('aligenie_sensor_group')).attributes.get('entity_id')
+            entity_ids = self._hass.states.get(state.attributes.get('aihome_sensor_group')).attributes.get('entity_id')
 
             # properties = [{'name':'PowerState', 'value':'on'}]
             properties = []
             for entity_id in entity_ids:
                 entity = self._hass.states.get(entity_id)
-                if entity_id.startswith('sensor.') and entity.attributes.get('aligenie_sensor') is not None :
+                if entity_id.startswith('sensor.') and entity.attributes.get('aihome_sensor') is not None :
                     prop,action = self._guessPropertyAndAction(entity_id, entity.attributes, entity.state)
                     _LOGGER.debug('property:%s', prop)
                     if prop is None:
@@ -336,8 +336,8 @@ class Aligenie:
 
     # http://doc-bot.tmall.com/docs/doc.htm?treeId=393&articleId=108271&docType=1
     def _guessDeviceType(self, entity_id, attributes):
-        if 'hagenie_deviceType' in attributes:
-            return attributes['hagenie_deviceType']
+        if 'aligenie_deviceType' in attributes:
+            return attributes['aligenie_deviceType']
 
         # Exclude with domain
         domain = entity_id[:entity_id.find('.')]
@@ -353,8 +353,8 @@ class Aligenie:
         return self._INCLUDE_DOMAINS[domain] if domain in self._INCLUDE_DOMAINS else None
 
     def _guessDeviceName(self, entity_id, attributes, places, aliases):
-        if 'hagenie_deviceName' in attributes:
-            return attributes['hagenie_deviceName']
+        if 'aligenie_deviceName' in attributes:
+            return attributes['aligenie_deviceName']
 
         # Remove place prefix
         name = attributes['friendly_name']
@@ -386,8 +386,8 @@ class Aligenie:
 
     # https://open.bot.tmall.com/oauth/api/placelist
     def _guessZone(self, entity_id, attributes, groups_attributes, places):
-        if 'hagenie_zone' in attributes:
-            return attributes['hagenie_zone']
+        if 'aligenie_zone' in attributes:
+            return attributes['aligenie_zone']
 
         # Guess with friendly_name prefix
         name = attributes['friendly_name']
@@ -399,8 +399,8 @@ class Aligenie:
         for group_attributes in groups_attributes:
             for child_entity_id in group_attributes['entity_id']:
                 if child_entity_id == entity_id:
-                    if 'hagenie_zone' in group_attributes:
-                        return group_attributes['hagenie_zone']
+                    if 'aligenie_zone' in group_attributes:
+                        return group_attributes['aligenie_zone']
                     return group_attributes['friendly_name']
 
         return None
@@ -422,8 +422,8 @@ class Aligenie:
         else:
             actions = ["TurnOn", "TurnOff"]
     
-        if 'hagenie_propertyName' in attributes:
-            name = attributes['hagenie_propertyName']
+        if 'aligenie_propertyName' in attributes:
+            name = attributes['aligenie_propertyName']
         elif entity_id.startswith('sensor.'):
             unit = attributes['unit_of_measurement'] if 'unit_of_measurement' in attributes else ''
             if unit == u'°C' or unit == u'℃':
