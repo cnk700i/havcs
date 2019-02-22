@@ -226,7 +226,7 @@ class Aligenie:
         for state in states:
             attributes = state.attributes
 
-            if attributes.get('hidden') or attributes.get('aligenie_hidden'):
+            if not attributes.get('aihome_device', False):
                 continue
 
             friendly_name = attributes.get('friendly_name')
@@ -250,10 +250,10 @@ class Aligenie:
 
             _LOGGER.debug('-----entity_id: %s, deviceType: %s, attributes: %s', entity_id, deviceType ,attributes)
             if deviceType == 'sensor':
-                if attributes.get('aligenie_sensor_group') is None:
+                if attributes.get('aihome_sensor_group') is None:
                     continue
                 _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
-                sensor_ids = self._hass.states.get(attributes.get('aligenie_sensor_group')).attributes.get('entity_id')
+                sensor_ids = self._hass.states.get(attributes.get('aihome_sensor_group')).attributes.get('entity_id')
                 for sensor in sensor_ids:
                     if sensor.startswith('sensor.'):
                         prop,action = self._guessPropertyAndAction(sensor, self._hass.states.get(sensor).attributes, self._hass.states.get(sensor).state)
@@ -302,13 +302,13 @@ class Aligenie:
         state = self._hass.states.get(entity_id)
 
         if entity_id.startswith('sensor.'):
-            entity_ids = self._hass.states.get(state.attributes.get('aligenie_sensor_group')).attributes.get('entity_id')
+            entity_ids = self._hass.states.get(state.attributes.get('aihome_sensor_group')).attributes.get('entity_id')
 
             # properties = [{'name':'PowerState', 'value':'on'}]
             properties = []
             for entity_id in entity_ids:
                 entity = self._hass.states.get(entity_id)
-                if entity_id.startswith('sensor.') and entity.attributes.get('aligenie_sensor') is not None :
+                if entity_id.startswith('sensor.') and entity.attributes.get('aihome_sensor') is not None :
                     prop,action = self._guessPropertyAndAction(entity_id, entity.attributes, entity.state)
                     _LOGGER.debug('property:%s', prop)
                     if prop is None:
