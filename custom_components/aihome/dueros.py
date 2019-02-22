@@ -368,7 +368,7 @@ class Dueros:
     def _getControlService(self, action):
         i = 0
         service = ''
-        for c in action:
+        for c in action.split('Request')[0]:
             service += (('_' if i else '') + c.lower()) if c.isupper() else c
             i += 1
         return service
