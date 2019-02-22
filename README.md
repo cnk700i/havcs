@@ -21,7 +21,7 @@
 2. http网关+mqtt中转，适合有无公网ip自建测试技能接入
 > 原先本人[http2mqtt2hass](https://github.com/cnk700i/http2mqtt2hass)插件接入方法
 
-3. mqtt，技能接入，目前技能暂未上线
+3. mqtt，技能接入，技能已上线，APP搜"aihome"
 > 原先计划采用自[定义技能方式接入](https://ljr.im/2019/01/20/aihomesmart-speaker-universal-access-platform/)，因翻车改用智能家居技能对接
 # 配置说明（configuration.yaml）
 ```yaml
