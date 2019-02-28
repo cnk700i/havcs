@@ -2,6 +2,8 @@
 插件使用有点复杂，有疑问请加QQ群307773400交流。
 
 # 更新日志
+- 2019-02-27
+  1. input_boolean支持直接调用service指令
 - 2019-02-22
   1. 增加叮咚设备更新（插件启动触发更新）
   2. 修复京东音箱、小度音箱对input_boolean类的开/关控制
@@ -9,7 +11,8 @@
   4. 更改设备发现模式为非主动发现,使用"aihome_device"属性设置设备可被发现
   5. 传感器类设备配置属性精简
   6. 说明文档补充设备配置样例
-- 2019-01-xx:HA 0.86.4 和 HA 0.82.1，本地单机测试。
+- 2019-01-xx
+  HA 0.86.4 和 HA 0.82.1，本地单机测试。
 
 # 插件说明
 对目前智能音箱接入插件进行了整合，其中天猫精灵和小度音箱插件基于瀚思彼岸论坛[@feversky](https://bbs.hassbian.com/thread-4758-1-1.html)和[@zhkufish](https://bbs.hassbian.com/thread-5417-1-1.html)插件进行小修改，叮咚音箱插件参考前两个插件编写。
@@ -177,5 +180,34 @@ aihome:
     aihome_sensor: True     # 上报传感器数据
   ```
   >__INFO：建议虚拟sensor的名称命名为“{房间名}传感器”，各个平台的识别执行成功率比较高。__
-  4. 最后按照普通设备进行查询操作即可
+  
 >__INFO：原天猫精灵插件根据zone组合传感器，原小度插件没有实现相应查询功能，于是对查询方法进行了统一。__
+
+- 直接调service类设备配置说明
+  1. 新增一个input_boolean
+  ```yaml
+  #{HA配置目录}/configuration.yaml
+  input_boolean:
+    call_service:
+  ```
+  2. 自定义虚拟input_boolean的属性，在aihome_actions属性中设置对应的service指令（只能设置turn_on/turn_off，对应打开/关闭命令）
+  ```yaml
+  #{HA配置目录}/customize.yaml
+    input_boolean.call_service:  
+      friendly_name: 定时充电
+      aihome_device: True
+      aligenie_deviceName: 开关
+      aligenie_deviceType: switch
+      aligenie_zone: 主卧
+      dueros_deviceType: 'SWITCH'
+      dueros_actions: ['turnOn', 'turnOff']
+      jdwhale_deviceType: 'SWITCH'
+      jdwhale_actions: ['TurnOn', 'TurnOff']
+      aihome_actions:
+          # service指令格式:[domain, service_name, service_data（json字符串）]，具体内容需参见相应组件的服务定义。
+          turn_on: ['common_timer', 'set', '{"entity_id":"switch.demo","duration":"01:00:00","operation":"off"}'] # 打开命令
+          turn_off: ['common_timer', 'cancel', '{"entity_id":"switch.demo"}'] # 关闭命令
+  ```
+  >__INFO：调自动化(automation.turn_on)、调脚本(scrpit.turn_on)、调红外指令(climate.xiaomi_miio_send_command)等会比较适合。__
+
+  >__INFO：天猫精灵无法自定义名称，不太适合使用。__
