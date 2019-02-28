@@ -148,7 +148,7 @@ class Jdwhale:
             'vacuum': {
                 'TurnOnRequest':  'start',
                 'TurnOffRequest': 'return_to_base',
-                'SetSuctionRequest': lambda state, payload: ('set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
+                'SetSuctionRequest': lambda state, payload: ('fan', 'set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
             },
             'switch': {
                 'TurnOnRequest': 'turn_on',
@@ -157,14 +157,18 @@ class Jdwhale:
             'light': {
                 'TurnOnRequest':  'turn_on',
                 'TurnOffRequest': 'turn_off',
-                'SetBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': payload['brightness']['value']}),
-                'IncrementBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
+                'SetBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['brightness']['value']}),
+                'IncrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
                     'value'], 100)}),
-                'DecrementBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
-                'SetColorRequest': lambda state, payload: ('turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
+                'DecrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
+                'SetColorRequest': lambda state, payload: ('light', 'turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
             },
             'sensor':{
                 'QueryTemperatureRequest'
+            },
+            'input_boolean':{
+                'TurnOnRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOffRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
             }
 
         }
@@ -236,7 +240,7 @@ class Jdwhale:
 
         for state in states:
             attributes = state.attributes
-            _LOGGER.debug('-----entity_id: %s, aihome_device: %s', state.entity_id, attributes.get('aihome_device'))
+            # _LOGGER.debug('-----entity_id: %s, aihome_device: %s', state.entity_id, attributes.get('aihome_device'))
             if not attributes.get('aihome_device', False):
                 continue
 
@@ -324,7 +328,7 @@ class Jdwhale:
         if domain in self._TRANSLATIONS.keys():
             translation = self._TRANSLATIONS[domain][cmnd]
             if callable(translation):
-                service, content = translation(self._hass.states.get(entity_id), payload)
+                domain, service, content = translation(self._hass.states.get(entity_id), payload)
                 data.update(content)
             else:
                 service = translation
