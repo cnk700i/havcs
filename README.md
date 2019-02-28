@@ -195,6 +195,7 @@ aihome:
   #{HA配置目录}/customize.yaml
     input_boolean.call_service:  
       friendly_name: 定时充电
+      #↓↓↓该部分根据使用的音箱精简↓↓↓
       aihome_device: True
       aligenie_deviceName: 开关
       aligenie_deviceType: switch
@@ -203,6 +204,7 @@ aihome:
       dueros_actions: ['turnOn', 'turnOff']
       jdwhale_deviceType: 'SWITCH'
       jdwhale_actions: ['TurnOn', 'TurnOff']
+      #↑↑↑该部分根据使用的音箱精简↑↑↑
       aihome_actions:
           # service指令格式:[domain, service_name, service_data（json字符串）]，具体内容需参见相应组件的服务定义。
           turn_on: ['common_timer', 'set', '{"entity_id":"switch.demo","duration":"01:00:00","operation":"off"}'] # 打开命令
