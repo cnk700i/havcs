@@ -1,7 +1,9 @@
 # 备注
-插件使用有点复杂，有疑问请加QQ群307773400交流。
+建议前往[博客](https://ljr.im/2019/02/17/ha-plugin-smart-speaker-access-integrated-version/)查看更详细的介绍；插件使用有点复杂，有疑问请加QQ群307773400交流。
 
 # 更新日志
+- 2019-03-06
+  1. HA 0.88.2版本测试。
 - 2019-02-27
   1. input_boolean支持直接调用service指令
 - 2019-02-22
