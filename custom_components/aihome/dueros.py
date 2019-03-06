@@ -181,7 +181,7 @@ class Dueros:
                 'TurnOffRequest': 'return_to_base',
                 'TimingTurnOnRequest': 'start',
                 'TimingTurnOffRequest': 'return_to_base',
-                'SetSuctionRequest': lambda state, payload: ('set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
+                'SetSuctionRequest': lambda state, payload: ('vacuum', 'set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
             },
             'switch': {
                 'TurnOnRequest': 'turn_on',
@@ -194,12 +194,16 @@ class Dueros:
                 'TurnOffRequest': 'turn_off',
                 'TimingTurnOnRequest': 'turn_on',
                 'TimingTurnOffRequest': 'turn_off',
-                'SetBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': payload['brightness']['value']}),
-                'IncrementBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
+                'SetBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['brightness']['value']}),
+                'IncrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
                     'value'], 100)}),
-                'DecrementBrightnessPercentageRequest': lambda state, payload: ('turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
-                'SetColorRequest': lambda state, payload: ('turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
+                'DecrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
+                'SetColorRequest': lambda state, payload: ('light', 'turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
             },
+            'input_boolean':{
+                'TurnOnRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOffRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+            }
 
         }
     def _errorResult(self, errorCode, messsage=None):
@@ -278,7 +282,7 @@ class Dueros:
 
             properties,actions = self._guessPropertyAndAction(entity_id, attributes)
             device_attr =[]
-            # _LOGGER.debug('-----entity_id: %s, deviceTypes: %s, attributes: %s', entity_id, deviceTypes, attributes)
+            _LOGGER.debug('-----entity_id: %s, deviceTypes: %s, attributes: %s', entity_id, deviceTypes, attributes)
             if 'sensor' in deviceTypes:
                 if attributes.get('aihome_sensor_group') is None:
                     continue
@@ -324,14 +328,14 @@ class Dueros:
         if domain in self._TRANSLATIONS.keys():
             translation = self._TRANSLATIONS[domain][action]
             if callable(translation):
-                service, content = translation(self._hass.states.get(entity_id), payload)
+                domain, service, content = translation(self._hass.states.get(entity_id), payload)
                 data.update(content)
             else:
                 service = translation
         else:
             service = self._getControlService(action)
 
-        _LOGGER.debug(self._hass.states.get(entity_id).attributes)
+        _LOGGER.debug('_controlDevice():service:%s.%s, service_data:%s',domain, service, data)
         with AsyncTrackStates(self._hass) as changed_states:
             result = await self._hass.services.async_call(domain, service, data, True)
 

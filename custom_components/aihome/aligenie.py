@@ -157,11 +157,15 @@ class Aligenie:
             'light': {
                 'TurnOn':  'turn_on',
                 'TurnOff': 'turn_off',
-                'SetBrightness':        lambda state, payload: ('turn_on', {'brightness_pct': payload['value']}),
-                'AdjustUpBrightness':   lambda state, payload: ('turn_on', {'brightness_pct': min(state.attributes['brightness_pct'] + payload['value'], 100)}),
-                'AdjustDownBrightness': lambda state, payload: ('turn_on', {'brightness_pct': max(state.attributes['brightness_pct'] - payload['value'], 0)}),
-                'SetColor':             lambda state, payload: ('turn_on', {"color_name": payload['value']})
+                'SetBrightness':        lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['value']}),
+                'AdjustUpBrightness':   lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness_pct'] + payload['value'], 100)}),
+                'AdjustDownBrightness': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness_pct'] - payload['value'], 0)}),
+                'SetColor':             lambda state, payload: ('light', 'turn_on', {"color_name": payload['value']})
             },
+            'input_boolean':{
+                'TurnOn': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOff': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+            }
 
         }
     def _errorResult(self, errorCode, messsage=None):
@@ -274,7 +278,7 @@ class Aligenie:
                 #'actions': ['TurnOn', 'TurnOff', 'Query', action] if action == 'QueryPowerState' else ['Query', action],
                 #'extensions':{'extension1':'','extension2':''}
                 })
-            entity_ids.append(entity_id)
+            _LOGGER.debug('encrypt_entity_id:%s', encrypt_entity_id(entity_id))
         return devices, entity_ids
 
 
@@ -285,7 +289,7 @@ class Aligenie:
         if domain in self._TRANSLATIONS.keys():
             translation = self._TRANSLATIONS[domain][cmnd]
             if callable(translation):
-                service, content = translation(self._hass.states.get(entity_id), payload)
+                domain, service, content = translation(self._hass.states.get(entity_id), payload)
                 data.update(content)
             else:
                 service = translation
