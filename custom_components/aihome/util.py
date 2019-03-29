@@ -8,6 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
 ENTITY_KEY = ''
+CONTEXT_AIHOME = None
 
 STORAGE_VERSION = 1
 STORAGE_KEY = 'aihome'
@@ -133,14 +134,14 @@ class BindManager:
 
     async def async_save_changed_devices(self, new_devices, platform, p_user_id = '*', force_save = False):
         self.update_lists(new_devices, platform)
-        uuid = p_user_id+'@'+platform
-        if self.check_discovery(uuid) and not force_save:
-            _LOGGER.debug('用户(%s)已执行discovery', uuid)
+        uid = p_user_id+'@'+platform
+        if self.check_discovery(uid) and not force_save:
+            _LOGGER.debug('用户(%s)已执行discovery', uid)
             bind_entity_ids = []
             unbind_entity_ids = []
         else:
-            _LOGGER.debug('用户(%s)启动首次执行discovery', uuid)
-            self.add_discovery(uuid)
+            _LOGGER.debug('用户(%s)启动首次执行discovery', uid)
+            self.add_discovery(uid)
             bind_entity_ids = self.get_bind_entity_ids(platform = platform,p_user_id =p_user_id, repeat_upload = False)
             unbind_entity_ids = self.get_unbind_entity_ids(platform = platform,p_user_id=p_user_id)
             await self.async_save(platform, p_user_id=p_user_id)
@@ -149,17 +150,28 @@ class BindManager:
         # _LOGGER.debug('get_unbind_entity_ids:%s', unbind_entity_ids)
         return bind_entity_ids,unbind_entity_ids
 
-    def check_discovery(self, uuid):
-        if uuid in self._discovery:
+    def check_discovery(self, uid):
+        if uid in self._discovery:
             return True
         else:
             return False
-    def add_discovery(self, uuid):
-        self._discovery = self._discovery | set([uuid])
+    def add_discovery(self, uid):
+        self._discovery = self._discovery | set([uid])
+
     @property
     def discovery(self):
         return list(self._discovery)
 
+    def get_uids(self, platform, entity_id):
+        # _LOGGER.debug(self._discovery)
+        # _LOGGER.debug(self._privious_upload_devices)
+        p_user_ids = []
+        for uid in self._discovery:
+            p_user_id = uid.split('@')[0]
+            p = uid.split('@')[1]
+            if p == platform and (set([uid, '*@' + platform]) & self._privious_upload_devices.get(entity_id,{}).get('linked_account',set())):
+                p_user_ids.append(p_user_id)
+        return p_user_ids
 
 def decrypt_device_id(device_id):
     device_id = device_id.replace('-', '+')

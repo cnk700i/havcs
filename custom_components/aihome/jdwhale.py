@@ -196,8 +196,8 @@ class Jdwhale:
         payload = data['payload']
         properties = None
         name = header['name']
-        p_user_id = header['userId']
-        uuid = p_user_id+'@'+DOMAIN
+        p_user_id = header.get('userId','')
+        # uid = p_user_id+'@'+DOMAIN
 
         token = await self._hass.auth.async_validate_access_token(payload['accessToken'])
         if ignoreToken or token is not None:
@@ -284,42 +284,6 @@ class Jdwhale:
             entity_ids.append(entity_id)
         
         return devices, entity_ids
-
-    async def report_device(self,p_user_id, bind_entity_ids, unbind_entity_ids, devices):
-        payload = []
-        for device in devices:
-            entity_id = decrypt_device_id(device['deviceId'])
-            if entity_id in bind_entity_ids:
-                bind_payload  ={
-                    "header": {
-                        "namespace": "Alpha.Iot.Device.Report",
-                        "name": "BindDeviceEvent",
-                        "messageId": str(uuid.uuid4()),
-                        "payLoadVersion": "1"
-                        },
-                    "payload": {
-                        "skillId": "",
-                        "userId": p_user_id,
-                        "deviceInfo": device
-                    }
-                }
-                payload.append(bind_payload)
-        for entity_id in unbind_entity_ids:
-            unbind_payload ={
-                "header": {
-                    "namespace": "Alpha.Iot.Device.Report",
-                    "name": "UnBindDeviceEvent",
-                    "messageId": str(uuid.uuid4()),
-                    "payLoadVersion": "1"
-                },
-                "payload": {
-                    "skillId": "",
-                    "userId": p_user_id,
-                    "deviceId":encrypt_entity_id(entity_id)
-                }
-            }
-            payload.append(unbind_payload)
-        return payload
 
     async def _controlDevice(self, cmnd, payload):
         entity_id = decrypt_device_id(payload['deviceId'])
@@ -452,9 +416,43 @@ class Jdwhale:
         return properties, actions
 
     @property
-    def should_report(self):
+    def should_report_when_starup(self):
         return True if 'report_when_starup' in self._mode else False
 
-        
+    async def bind_device(self,p_user_id, bind_entity_ids, unbind_entity_ids, devices):
+        payload = []
+        for device in devices:
+            entity_id = decrypt_device_id(device['deviceId'])
+            if entity_id in bind_entity_ids:
+                bind_payload  ={
+                    "header": {
+                        "namespace": "Alpha.Iot.Device.Report",
+                        "name": "BindDeviceEvent",
+                        "messageId": str(uuid.uuid4()),
+                        "payLoadVersion": "1"
+                        },
+                    "payload": {
+                        "skillId": "",
+                        "userId": p_user_id,
+                        "deviceInfo": device
+                    }
+                }
+                payload.append(bind_payload)
+        for entity_id in unbind_entity_ids:
+            unbind_payload ={
+                "header": {
+                    "namespace": "Alpha.Iot.Device.Report",
+                    "name": "UnBindDeviceEvent",
+                    "messageId": str(uuid.uuid4()),
+                    "payLoadVersion": "1"
+                },
+                "payload": {
+                    "skillId": "",
+                    "userId": p_user_id,
+                    "deviceId":encrypt_entity_id(entity_id)
+                }
+            }
+            payload.append(unbind_payload)
+        return payload    
     
 
