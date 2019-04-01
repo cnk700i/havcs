@@ -319,6 +319,8 @@ async def async_setup_entry(hass, entry):
         if sync:
             hass.bus.async_listen(EVENT_STATE_CHANGED, report_device)
 
+        await hass.data[DATA_AIHOME_MQTT].async_publish("ai-home/http2mqtt2hass/"+app_key+"/response/test", 'init', 2, False)
+
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start_aihome)
 
     async def async_stop_mqtt(event: Event):
@@ -456,6 +458,9 @@ async def async_setup_entry(hass, entry):
         try:
             payload = aihome_util.AESCipher(decrypt_key).decrypt(payload)
             req = json.loads(payload)
+            if req.get('msgType') == 'hello':
+                _LOGGER.info(req.get('content'))
+                return
             _LOGGER.debug("[%s] raw message: %s", req.get('platform'), req)
             if req.get('platform') == 'h2m2h':
                 if(allowed_uri and req.get('uri','/').split('?')[0] not in allowed_uri):
