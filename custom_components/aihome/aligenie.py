@@ -324,7 +324,7 @@ class Aligenie:
                         properties += prop
             return properties if properties else self._errorResult('IOT_DEVICE_OFFLINE')
         else:
-            if state is not None or state.state != 'unavailable':
+            if state is not None and state.state != 'unavailable':
                 return {'name':'powerstate', 'value':state.state}
         return self._errorResult('IOT_DEVICE_OFFLINE')
 

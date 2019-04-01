@@ -2,8 +2,14 @@
 建议前往[博客](https://ljr.im/2019/02/17/ha-plugin-smart-speaker-access-integrated-version/)查看更详细的介绍；插件使用有点复杂，有疑问请加QQ群307773400交流。
 
 # 更新日志
+- 2019-04-01
+  1. 增加首次启动连接mqtt测试功能，如果正常INFO级别日志会显示提示信息，否则请检查appkey以及网络连接
+- 2019-03-29
+  1. 设备开关状态主动上报（小度音箱），可通过配置文件设置是否上报
+  2. HA 0.90.2版本测试
+  3. 前端页面优化，上线了密码找回功能
 - 2019-03-06
-  1. HA 0.88.2版本测试。
+  1. HA 0.88.2版本测试
 - 2019-02-27
   1. input_boolean支持直接调用service指令
 - 2019-02-22
@@ -14,7 +20,7 @@
   5. 传感器类设备配置属性精简
   6. 说明文档补充设备配置样例
 - 2019-01-xx
-  HA 0.86.4 和 HA 0.82.1，本地单机测试。
+  HA 0.86.4 和 HA 0.82.1，本地单机测试
 
 # 插件说明
 对目前智能音箱接入插件进行了整合，其中天猫精灵和小度音箱插件基于瀚思彼岸论坛[@feversky](https://bbs.hassbian.com/thread-4758-1-1.html)和[@zhkufish](https://bbs.hassbian.com/thread-5417-1-1.html)插件进行小修改，叮咚音箱插件参考前两个插件编写。
@@ -45,13 +51,14 @@ aihome:
     app_secret: xxx                   # 必填，https://ai-home.ljr.im/account/获取
     entity_key: xxx                   # 必填，加密entity_id的key，自由设置16位字符串
     certificate: xxx/ca.crt           # 必填，插件内ca.crt文件完整路径
-    tls_insecure: true                # 必填，不校验证书主机名，因为ca.crt是自签证书，设置true
+    tls_insecure: True                # 必填，不校验证书主机名，因为ca.crt是自签证书，设置true
     ha_url: https://localhost:8123    # 本地HA访问网址，不设置则默认为http://localhost:8123
     allowed_uri:                      # http请求白名单，不设置则默认不限制（模式一、模式二才有效）
       - /auth/token
       - /dueros_gate
       - /aligenie_gate
       - /jdwhale_gate
+    async: False                      # 主动上报设备状态，不设置则默认False（不上报），小度音箱有效
      
 ```
 # 设备配置

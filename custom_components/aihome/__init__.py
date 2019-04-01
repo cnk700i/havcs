@@ -1,7 +1,7 @@
 """
 author: cnk700i
 blog: ljr.im
-tested On HA version: 0.82.1
+tested On HA version: 0.90.2
 """
 from . import util as aihome_util
 from typing import cast
@@ -21,12 +21,11 @@ import json
 from json.decoder import JSONDecodeError
 import requests.certs
 from homeassistant import config_entries
-from homeassistant.core import Event, ServiceCall, callback
+from homeassistant.core import Event, ServiceCall, Context, callback
 from homeassistant.helpers import config_validation as cv
-from homeassistant.core import callback, Context, Event
 from homeassistant.components import mqtt
 from homeassistant.helpers.typing import HomeAssistantType, ConfigType
-from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP)
+from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP, EVENT_STATE_CHANGED, ATTR_ENTITY_ID)
 from . import config_flow
 from voluptuous.humanize import humanize_error
 import traceback
@@ -62,7 +61,9 @@ CONF_TLS_INSECURE = 'tls_insecure'
 CONF_TLS_VERSION = 'tls_version'
 CONF_ALLOWED_URI = 'allowed_uri'
 CONF_ENTITY_KEY = 'entity_key'
+CONF_USER_ID = 'user_id'
 CONF_HA_URL = 'ha_url'
+CONF_SYNC = 'sync'
 
 CONF_HTTP = 'http'
 CONF_MQTT = 'mqtt'
@@ -101,7 +102,9 @@ MQTT_SCHEMA = vol.Schema({
         vol.Optional(CONF_TOPIC): cv.string,
         vol.Optional(CONF_ALLOWED_URI, default=[]): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
         vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
+        vol.Optional(CONF_USER_ID): cv.string,
         vol.Optional(CONF_HA_URL, default='http://localhost:8123'): cv.string,
+        vol.Optional(CONF_SYNC, default=False): cv.boolean,
 }, extra=vol.ALLOW_EXTRA)
 HTTP_SCHEMA = vol.Schema({
     vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
@@ -111,7 +114,7 @@ CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), ['jdwhale', 'aligenie', 'dueros']),
         vol.Optional(CONF_HTTP): HTTP_SCHEMA,
-        vol.Optional(CONF_MQTT): MQTT_SCHEMA
+        vol.Optional(CONF_MQTT): MQTT_SCHEMA,
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -134,7 +137,8 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
         ))
     if CONF_MQTT in conf:            
         aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
-
+    if CONF_USER_ID in conf:
+        aihome_util.CONTEXT_AIHOME = Context(conf.get(CONF_MQTT).get(CONF_USER_ID))
 
     global EXPIRATION
     platform = conf[CONF_PLATFORM]
@@ -201,6 +205,7 @@ async def async_setup_entry(hass, entry):
     protocol = conf[CONF_PROTOCOL]
     allowed_uri = conf.get(CONF_ALLOWED_URI)
     ha_url = conf.get(CONF_HA_URL)
+    sync = conf.get(CONF_SYNC)
     decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]
 
     # For cloudmqtt.com, secured connection, auto fill in certificate
@@ -260,30 +265,63 @@ async def async_setup_entry(hass, entry):
     success = await hass.data[DATA_AIHOME_MQTT].async_connect()  # type: bool
 
     if not success:
+        _LOGGER.error('can not connect to mqtt server, check mqtt server\'s address and port.')
         return False
 
-    async def async_report_device(event: Event):
-        for uuid in hass.data['aihome_bind_manager'].discovery:
-            p_user_id = uuid.split('@')[0]
-            platform = uuid.split('@')[1]
-            if getattr(HANDLER.get(platform), 'should_report') and hasattr(HANDLER.get(platform), 'report_device'):
-                devices,entity_ids = HANDLER[platform]._discoveryDevice()
-                bind_entity_ids,unbind_entity_ids = await hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids,platform, p_user_id,True)
-                payload = await HANDLER[platform].report_device(p_user_id, entity_ids , unbind_entity_ids, devices)
-                _LOGGER.debug('---report request: bind_entity_ids:%s, unbind_entity_ids:%s', bind_entity_ids, unbind_entity_ids)
+    async def start_aihome(event: Event):
+        async def async_bind_device():
+            for uuid in hass.data['aihome_bind_manager'].discovery:
+                p_user_id = uuid.split('@')[0]
+                platform = uuid.split('@')[1]
+                if platform in HANDLER and getattr(HANDLER.get(platform), 'should_report', False) and hasattr(HANDLER.get(platform), 'bind_device'):
+                    devices,entity_ids = HANDLER[platform]._discoveryDevice()
+                    bind_entity_ids,unbind_entity_ids = await hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids,platform, p_user_id,True)
+                    payload = await HANDLER[platform].bind_device(p_user_id, entity_ids , unbind_entity_ids, devices)
+                    _LOGGER.debug('[%s] report request: bind_entity_ids:%s, unbind_entity_ids:%s', platform, bind_entity_ids, unbind_entity_ids)
 
-                if payload:
-                    url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
-                    data = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
-                    try:
-                        session = async_get_clientsession(hass, verify_ssl=False)
-                        with async_timeout.timeout(5, loop=hass.loop):
-                            response = await session.post(url, data=data)
-                            _LOGGER.debug('---report response:%s',await response.text())
-                    except(asyncio.TimeoutError, aiohttp.ClientError):
-                        _LOGGER.error("Error while accessing: %s", url)
+                    if payload:
+                        url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
+                        data = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
+                        try:
+                            session = async_get_clientsession(hass, verify_ssl=False)
+                            with async_timeout.timeout(5, loop=hass.loop):
+                                response = await session.post(url, data=data)
+                                _LOGGER.debug('[%s] report response:%s', platform, await response.text())
+                        except(asyncio.TimeoutError, aiohttp.ClientError):
+                            _LOGGER.error("Error while accessing: %s", url)
+        await async_bind_device()
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, async_report_device)
+        @callback
+        def report_device(event):
+            _LOGGER.debug('%s changed', event.data[ATTR_ENTITY_ID])
+            hass.add_job(async_report_device(event))
+
+        async def async_report_device(event):
+            """report device state when changed. """
+            entity = hass.states.get(event.data[ATTR_ENTITY_ID])
+            if not entity.attributes.get('aihome_device', False):
+                return
+            for platform, handler in HANDLER.items():
+                if hasattr(handler, 'report_device'):
+                    payload = HANDLER[platform].report_device(entity.entity_id)
+                    _LOGGER.debug('[%s] report device: %s, %s, %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
+                    if payload:
+                        url = 'https://ai-home.ljr.im/skill/'+platform+'.php?v=report&AppKey='+app_key
+                        data = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
+                        try:
+                            session = async_get_clientsession(hass, verify_ssl=False)
+                            with async_timeout.timeout(5, loop=hass.loop):
+                                response = await session.post(url, data=data)
+                                _LOGGER.debug('[%s] report response:%s', platform, await response.text())
+                        except(asyncio.TimeoutError, aiohttp.ClientError):
+                            _LOGGER.error("Error while accessing: %s", url)
+
+        if sync:
+            hass.bus.async_listen(EVENT_STATE_CHANGED, report_device)
+
+        await hass.data[DATA_AIHOME_MQTT].async_publish("ai-home/http2mqtt2hass/"+app_key+"/response/test", 'init', 2, False)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start_aihome)
 
     async def async_stop_mqtt(event: Event):
         """Stop MQTT component."""
@@ -374,7 +412,10 @@ async def async_setup_entry(hass, entry):
             platform = 'jdwhale'
         else:
             platform = 'unknown'
-            _LOGGER.info('command from unknown platform')
+            _LOGGER.error('receive command from unsupport platform "%s".', platform)
+            return
+        if platform not in HANDLER:
+            _LOGGER.error('receive command from uninitialized platform "%s" , check up your configuration.yaml.', platform)
             return
         try:
             response = await HANDLER[platform].handleRequest(json.loads(resData['content']), ignoreToken = True)
@@ -403,13 +444,24 @@ async def async_setup_entry(hass, entry):
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
     @callback
-    def message_received(topic, payload, qos):
+    def message_received(*args): # 0.90 传参变化
+        if isinstance(args[0], str):
+            topic = args[0]
+            payload = args[1]
+            qos = args[2]
+        else:
+            topic = args[0].topic
+            payload = args[0].payload
+            qos = args[0].qos
         """Handle new MQTT state messages."""
         # _LOGGER.debug('get encrypt message: \n {}'.format(payload))
         try:
             payload = aihome_util.AESCipher(decrypt_key).decrypt(payload)
             req = json.loads(payload)
-            _LOGGER.debug("[%s]raw message: %s", req.get('platform'), req)
+            if req.get('msgType') == 'hello':
+                _LOGGER.info(req.get('content'))
+                return
+            _LOGGER.debug("[%s] raw message: %s", req.get('platform'), req)
             if req.get('platform') == 'h2m2h':
                 if(allowed_uri and req.get('uri','/').split('?')[0] not in allowed_uri):
                     _LOGGER.debug('uri not allowed: %s', req.get('uri','/'))

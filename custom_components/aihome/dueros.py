@@ -7,7 +7,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import (MAJOR_VERSION, MINOR_VERSION)
 from homeassistant.auth.const import ACCESS_TOKEN_EXPIRATION
-
+import uuid
 import homeassistant.auth.models as models
 from typing import Optional
 from datetime import timedelta
@@ -15,7 +15,7 @@ from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
 
 import copy
-from .util import (decrypt_device_id,encrypt_entity_id)
+from .util import (decrypt_device_id,encrypt_entity_id,CONTEXT_AIHOME)
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -221,19 +221,22 @@ class Dueros:
 
     async def handleRequest(self, data, ignoreToken = False):
         """Handle request"""
+        _LOGGER.info("Handle Request: %s", data)
         header = data['header']
         payload = data['payload']
         attributes = None
         name = header['name']
-        _LOGGER.info("Handle Request: %s", data)
+        p_user_id = payload.get('openUid','')
+        # uid = p_user_id+'@'+DOMAIN
 
         token = await self._hass.auth.async_validate_access_token(payload['accessToken'])
         if ignoreToken or token is not None:
             namespace = header['namespace']
             if namespace == 'DuerOS.ConnectedHome.Discovery':
                 name = 'DiscoverAppliancesResponse'
-                discovery_devices,_ = self._discoveryDevice()
+                discovery_devices,entity_ids = self._discoveryDevice()
                 result = {'discoveredAppliances': discovery_devices}
+                await self._hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif namespace == 'DuerOS.ConnectedHome.Control':
                 result = await self._controlDevice(name, payload)
                 name = name.replace('Request', 'Confirmation') # fix
@@ -307,7 +310,7 @@ class Dueros:
                 'modelName': 'HomeAssistant',
                 'version': '1.0',
                 'actions': actions,
-                'attributes': device_attr,
+                'attributes': device_attr if device_attr else properties,
                 })
             entity_ids.append(entity_id)
         return devices, entity_ids
@@ -337,9 +340,14 @@ class Dueros:
 
         _LOGGER.debug('_controlDevice():service:%s.%s, service_data:%s',domain, service, data)
         with AsyncTrackStates(self._hass) as changed_states:
-            result = await self._hass.services.async_call(domain, service, data, True)
+            result = await self._hass.services.async_call(domain, service, data, True, CONTEXT_AIHOME)
 
-        return {} if result else self._errorResult('IOT_DEVICE_OFFLINE')
+        if result:
+            state = self._hass.states.get(entity_id)
+            properties,actions = self._guessPropertyAndAction(entity_id, state.attributes, state.state)
+            return {'attributes': [properties]} 
+        else:
+            return self._errorResult('IOT_DEVICE_OFFLINE')
 
 
     def _queryDevice(self, cmnd, payload):
@@ -365,8 +373,10 @@ class Dueros:
                         break
             return properties if properties else self._errorResult('IOT_DEVICE_OFFLINE')
         else:
-            if state is not None or state.state != 'unavailable':
-                return {'name':'PowerState', 'value':state.state}
+            if state is not None and state.state != 'unavailable':
+                # return {'name':'turnOnState', 'value':state.state}
+                properties,actions = self._guessPropertyAndAction(entity_id, state.attributes, state.state)
+                return {'attributes': [properties]}
         return self._errorResult('IOT_DEVICE_OFFLINE')
 
     def _getControlService(self, action):
@@ -409,7 +419,6 @@ class Dueros:
                 if 'entity_id' in group_attributes:
                     groups_attributes.append(group_attributes)
         return groups_attributes
-
 
     def _guessPropertyAndAction(self, entity_id, attributes = None, state = None):
         # Support On/Off/Query only at this time
@@ -457,7 +466,7 @@ class Dueros:
             else:
                 name = None
         else:
-            name = 'PowerState'
+            name = 'turnOnState'
             if state != 'off':
                 state = 'ON'
             else:
@@ -467,3 +476,26 @@ class Dueros:
         Property = {'name': name, 'value': state, 'scale': scale, 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': legalValue } if name is not None else None
         return Property, actions
 
+    def report_device(self, entity_id):
+
+        payload = []
+        for p_user_id in self._hass.data['aihome_bind_manager'].get_uids(DOMAIN, entity_id):
+            _LOGGER.debug('report_device(): %s', p_user_id)
+            report = {
+                "header": {
+                    "namespace": "DuerOS.ConnectedHome.Control",
+                    "name": "ChangeReportRequest",
+                    "messageId": str(uuid.uuid4()),
+                    "payloadVersion": "1"
+                },
+                "payload": {
+                    "botId": "",
+                    "openUid": p_user_id,
+                    "appliance": {
+                        "applianceId": encrypt_entity_id(entity_id),
+                        "attributeName": "turnOnState"
+                    }
+                }
+            }
+            payload.append(report)
+        return payload
