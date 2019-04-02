@@ -50,10 +50,10 @@ aihome:
     app_key: xxx                      # 必填，https://ai-home.ljr.im/account/获取
     app_secret: xxx                   # 必填，https://ai-home.ljr.im/account/获取
     entity_key: xxx                   # 必填，加密entity_id的key，自由设置16位字符串
-    certificate: xxx/ca.crt           # 必填，插件内ca.crt文件完整路径
+    certificate: /xxx/ca.crt          # 必填，插件内ca.crt文件完整路径，注意windows的目录格式会不同
     tls_insecure: True                # 必填，不校验证书主机名，因为ca.crt是自签证书，设置true
-    ha_url: https://localhost:8123    # 本地HA访问网址，不设置则默认为http://localhost:8123
-    allowed_uri:                      # http请求白名单，不设置则默认不限制（模式一、模式二才有效）
+    ha_url: https://localhost:8123    # 本地HA访问网址，不设置则默认为http://localhost:8123（模式二才有效）
+    allowed_uri:                      # http请求白名单，不设置则默认不限制（模式二才有效）
       - /auth/token
       - /dueros_gate
       - /aligenie_gate
