@@ -37,29 +37,42 @@
 # 配置说明（configuration.yaml）
 ```yaml
 #{HA配置目录}/configuration.yaml
+#完整配置
 aihome:
-  platform:                         # 加载内置智能音箱插件服务
+  platform:                           # 必填，加载内置智能音箱插件服务，至少启用一个音箱平台
     # - aligenie                        # 天猫精灵
     # - dueros                          # 小度
     - jdwhale                         # 叮咚
-  http:                             # 启用http网关功能（模式一、模式二需设置）
+  http:                               # 启用http网关功能（模式一、模式二需设置）
     expire_in_hours: 24               # token超时时间，单位小时，不设置则默认24h
-  mqtt:                             # 启用mqtt对接功能（模式二、模式三需设置）
+  mqtt:                               # 启用mqtt对接服务（模式二、模式三需设置）
     broker: mqtt.ljr.im               # MQTT服务器域名，不设置则默认为mqtt.ljr.im
     port: 28883                       # MQTT服务器端口，不设置则默认为28883
     app_key: xxx                      # 必填，https://ai-home.ljr.im/account/获取
     app_secret: xxx                   # 必填，https://ai-home.ljr.im/account/获取
     entity_key: xxx                   # 必填，加密entity_id的key，自由设置16位字符串
-    certificate: /xxx/ca.crt          # 必填，插件内ca.crt文件完整路径，注意windows的目录格式会不同
-    tls_insecure: True                # 必填，不校验证书主机名，因为ca.crt是自签证书，设置true
+    certificate: /xxx/ca.crt          # 插件目录内ca.crt文件完整路径，会尝试自动设置，如果不生效则手动指定。注意linux、windows目录格式会不同；docker安装（比如hassio）目录路径为/config/custom_components/aihome/ca.crt
+    tls_insecure: True                # 不校验证书主机名，因为ca.crt是自签证书，设置true
     ha_url: https://localhost:8123    # 本地HA访问网址，不设置则默认为http://localhost:8123（模式二才有效）
     allowed_uri:                      # http请求白名单，不设置则默认不限制（模式二才有效）
       - /auth/token
       - /dueros_gate
       - /aligenie_gate
       - /jdwhale_gate
-    async: False                      # 主动上报设备状态，不设置则默认False（不上报），小度音箱有效
-     
+    async: False                      # 不主动上报设备状态，不设置则默认不上报，如要上报设置为True（小度音箱才有效）
+```
+```yaml
+# 模式三简略配置
+aihome:
+  platform:                           # 必填，加载内置智能音箱插件服务，至少启用一个音箱平台
+    - aligenie                        # 天猫精灵
+    - dueros                          # 小度
+    - jdwhale                         # 叮咚
+  mqtt:
+    app_key: xxx                      # 必填，https://ai-home.ljr.im/account/获取
+    app_secret: xxx                   # 必填，https://ai-home.ljr.im/account/获取
+    entity_key: xxx                   # 必填，加密entity_id的key，自由设置"16位字符串"
+    async: False                      # 不主动上报设备状态，不设置则默认不上报，如要上报设置为True（小度音箱才有效）
 ```
 # 设备配置
 用于生成音箱云平台的设备信息。
