@@ -83,6 +83,9 @@ DEFAULT_QOS = 0
 DEFAULT_PROTOCOL = PROTOCOL_311
 DEFAULT_TLS_PROTOCOL = 'auto'
 DEFAULT_EXPIRE_IN_HOURS = 24
+DEFAULT_HA_URL = 'https://localhost:8123'
+DEFAULT_ALLOWED_URI = []
+# DEFAULT_ALLOWED_URI = ['/auth/token', '/dueros_gate', '/aligenie_gate', '/jdwhale_gate']
 
 CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQTT broker configuration'
 
@@ -93,17 +96,17 @@ MQTT_SCHEMA = vol.Schema({
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
         vol.Required(CONF_APP_KEY): cv.string,
         vol.Required(CONF_APP_SECRET): cv.string,
-        vol.Required(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
+        vol.Optional(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
         vol.Inclusive(CONF_CLIENT_KEY, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
         vol.Inclusive(CONF_CLIENT_CERT, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
-        vol.Optional(CONF_TLS_INSECURE): cv.boolean,
+        vol.Optional(CONF_TLS_INSECURE, default=True): cv.boolean,
         vol.Optional(CONF_TLS_VERSION, default=DEFAULT_TLS_PROTOCOL): vol.Any('auto', '1.0', '1.1', '1.2'),
         vol.Optional(CONF_PROTOCOL, default=DEFAULT_PROTOCOL): vol.All(cv.string, vol.In([PROTOCOL_31, PROTOCOL_311])),
         vol.Optional(CONF_TOPIC): cv.string,
-        vol.Optional(CONF_ALLOWED_URI, default=[]): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
+        vol.Optional(CONF_ALLOWED_URI, default=DEFAULT_ALLOWED_URI): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
         vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
         vol.Optional(CONF_USER_ID): cv.string,
-        vol.Optional(CONF_HA_URL, default='http://localhost:8123'): cv.string,
+        vol.Optional(CONF_HA_URL, default=DEFAULT_HA_URL): cv.string,
         vol.Optional(CONF_SYNC, default=False): cv.boolean,
 }, extra=vol.ALLOW_EXTRA)
 HTTP_SCHEMA = vol.Schema({
@@ -198,12 +201,17 @@ async def async_setup_entry(hass, entry):
     keepalive = conf[CONF_KEEPALIVE]
     app_key = conf.get(CONF_APP_KEY)
     app_secret = conf.get(CONF_APP_SECRET)
-    certificate = conf.get(CONF_CERTIFICATE)
+    certificate = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ca.crt')
+    if os.path.exists(certificate):
+        _LOGGER.info('auto load ca.crt from %s', certificate)
+    else:
+        certificate = conf.get(CONF_CERTIFICATE)
     client_key = conf.get(CONF_CLIENT_KEY)
     client_cert = conf.get(CONF_CLIENT_CERT)
     tls_insecure = conf.get(CONF_TLS_INSECURE)
     protocol = conf[CONF_PROTOCOL]
     allowed_uri = conf.get(CONF_ALLOWED_URI)
+    _LOGGER.info('allowed_uri: %s', allowed_uri)
     ha_url = conf.get(CONF_HA_URL)
     sync = conf.get(CONF_SYNC)
     decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]
