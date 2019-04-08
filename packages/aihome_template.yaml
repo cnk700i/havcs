@@ -1,0 +1,69 @@
+homeassistant: # 用于生成音箱平台设备
+  customize:
+    # 一般设备，switch light fan input_boolean cover等
+    input_boolean.aihome_demo_light:                                    # 平台已有设备的entity_id。开关类的是switch.xxx，灯类的是light.xxx，HA左侧开发者工具第二个图标可以查看当前HA所有的entities。
+      friendly_name: 厨房灯                                             # 设备别名，小度音箱和叮咚音箱使用这个名称进行控制
+      aihome_device: True                                               # 该设备可被发现
+      # 天猫精灵专用 <测试指令：打开/关闭厨房灯>
+      aligenie_deviceName: 灯                                             # 设备品类别名，https://open.bot.tmall.com/oauth/api/aliaslist
+      aligenie_zone: 厨房                                                 # 房间名，https://open.bot.tmall.com/oauth/api/placelist
+      aligenie_deviceType: light                                          # 设备品类，https://doc-bot.tmall.com/docs/doc.htm?treeId=393&articleId=108271&docType=1
+      aligenie_actions: ["TurnOn", "TurnOff"]                             # 指定设备支持的操作，https://doc-bot.tmall.com/docs/doc.htm?spm=0.7629140.0.0.2b131780Fl14V8&treeId=393&articleId=108264&docType=1
+      # 小度音箱专用 <测试指令：打开/关闭厨房灯>
+      dueros_deviceType: 'LIGHT'                                          # 指定设备类型，https://dueros.baidu.com/didp/doc/dueros-bot-platform/dbp-smart-home/protocol/discovery-message_markdown
+      dueros_actions: ['turnOn', 'turnOff']                               # 指定设备支持操作，https://dueros.baidu.com/didp/doc/dueros-bot-platform/dbp-smart-home/protocol/control-message_markdown
+      # 叮咚音箱专用 <测试指令：打开/关闭厨房灯>
+      jdwhale_deviceType: 'SWITCH'                                        # 指定设备类型，http://jdwhale.jd.com/Docs/skillManager#shebeifaxianfanhui
+      jdwhale_actions: ['TurnOn', 'TurnOff', 'Query', 'QueryPowerState']  # 指定设备支持操作，http://jdwhale.jd.com/Docs/skillManager#dakaishebei
+
+    # 环境类传感器，虚拟的sensor
+    sensor.aihome_demo_sensor:
+      friendly_name: 客厅传感器
+      aihome_device: True
+      aihome_sensor_group: group.aihome_demo_sensors # 关联一个传感器分组，从分组的真实传感器取数据
+      # 天猫精灵专用 <测试指令：查询客厅传感器的温度/湿度>
+      aligenie_deviceName: 传感器
+      aligenie_zone: 客厅 
+      aligenie_deviceType: sensor # 可自动识别，可省略
+      aligenie_actions: ['Query', 'QueryTemperature', 'QueryHumidity'] # 只测试查询温度、湿度
+      # 小度音箱专用 <测试指令：查询客厅传感器的温度/湿度>
+      dueros_deviceType: AIR_MONITOR # 无传感器类别，默认为空气监测器类设备，可省略
+      dueros_actions: ["getTemperatureReading", "getHumidity"] # 只测试查询温度、湿度
+      # 叮咚音箱专用 <测试指令：查询客厅传感器的温度/湿度>
+      jdwhale_deviceType: AIR_CLEANER # 无传感器类别，默认为空气净化器类设备，可省略
+      jdwhale_actions: ['Query', 'QueryTemperature', 'QueryHumidity'] # 只测试查询温度、湿度
+    # 真实传感器
+    sensor.aihome_demo_temperature:
+      aihome_sensor: True     # 上报传感器数据
+    # 真实传感器
+    sensor.aihome_demo_humidity:
+      aihome_sensor: True     # 上报传感器数据
+
+group:
+  # 新增，传感器分组
+  aihome_demo_sensors:
+    view: no
+    name: '客厅传感器列表'
+    control: hidden
+    entities:  # 关联真实传感器列表
+      - sensor.aihome_demo_temperature
+      - sensor.aihome_demo_humidity
+
+sensor:
+  - platform: template
+    sensors:
+      # 演示用
+      aihome_demo_temperature:
+        unit_of_measurement: '°C'
+        value_template: "20"
+      # 演示用
+      aihome_demo_humidity:
+        unit_of_measurement: '%'
+        value_template: "60"
+      # 新增，虚拟的sensor
+      aihome_demo_sensor:
+        value_template: "虚拟的传感器"
+
+input_boolean:
+  # 演示用
+  aihome_demo_light:
