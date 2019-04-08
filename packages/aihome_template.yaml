@@ -1,4 +1,5 @@
-homeassistant: # 用于生成音箱平台设备
+# 用于生成音箱平台设备
+homeassistant:
   customize:
     # 一般设备，switch light fan input_boolean cover等
     input_boolean.aihome_demo_light:                                    # 平台已有设备的entity_id。开关类的是switch.xxx，灯类的是light.xxx，HA左侧开发者工具第二个图标可以查看当前HA所有的entities。
