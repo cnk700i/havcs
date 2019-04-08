@@ -281,7 +281,7 @@ async def async_setup_entry(hass, entry):
             for uuid in hass.data['aihome_bind_manager'].discovery:
                 p_user_id = uuid.split('@')[0]
                 platform = uuid.split('@')[1]
-                if platform in HANDLER and getattr(HANDLER.get(platform), 'should_report', False) and hasattr(HANDLER.get(platform), 'bind_device'):
+                if platform in HANDLER and getattr(HANDLER.get(platform), 'should_report_when_starup', False) and hasattr(HANDLER.get(platform), 'bind_device'):
                     devices,entity_ids = HANDLER[platform]._discoveryDevice()
                     bind_entity_ids,unbind_entity_ids = await hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids,platform, p_user_id,True)
                     payload = await HANDLER[platform].bind_device(p_user_id, entity_ids , unbind_entity_ids, devices)
