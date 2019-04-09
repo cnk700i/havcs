@@ -1,5 +1,5 @@
 # 备注
-建议前往[博客](https://ljr.im/2019/02/17/ha-plugin-smart-speaker-access-home-assistant-integration/)查看更详细的介绍；注意检查HA日志插件是否成功启动；使用过程中有疑问请加QQ群307773400交流。
+建议前往[博客](https://ljr.im/articles/plugin-smart-speaker-access-home-assistant-integration/)查看更详细的介绍；注意检查HA日志插件是否成功启动；使用过程中有疑问请加QQ群307773400交流。
 
 # 更新日志
 - 2019-04-09
