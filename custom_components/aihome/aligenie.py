@@ -17,7 +17,7 @@ from .util import (decrypt_device_id,encrypt_entity_id)
 import copy
 
 _LOGGER = logging.getLogger(__name__)
-# _LOGGER.setLevel(logging.DEBUG)
+_LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
 DOMAIN       = 'aligenie'
@@ -157,14 +157,16 @@ class Aligenie:
             'light': {
                 'TurnOn':  'turn_on',
                 'TurnOff': 'turn_off',
-                'SetBrightness':        lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['value']}),
-                'AdjustUpBrightness':   lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness_pct'] + payload['value'], 100)}),
-                'AdjustDownBrightness': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness_pct'] - payload['value'], 0)}),
-                'SetColor':             lambda state, payload: ('light', 'turn_on', {"color_name": payload['value']})
+                'SetBrightness':        lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': payload['value']}]),
+                'AdjustUpBrightness':   lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': min(state.attributes['brightness_pct'] + payload['value'], 100)}]),
+                'AdjustDownBrightness': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': max(state.attributes['brightness_pct'] - payload['value'], 0)}]),
+                'SetColor':             lambda state, payload: (['light'], ['turn_on'], [{"color_name": payload['value']}])
             },
             'input_boolean':{
-                'TurnOn': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
-                'TurnOff': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+                'TurnOn': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_on']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_on']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOff': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_off']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_off']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_off']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+                'AdjustUpBrightness': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['increase_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'AdjustDownBrightness': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['decrease_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
             }
 
         }
@@ -286,20 +288,32 @@ class Aligenie:
         entity_id = decrypt_device_id(payload['deviceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
+        domain_list = [domain]
+        data_list = [data]
+        service_list =['']
         if domain in self._TRANSLATIONS.keys():
             translation = self._TRANSLATIONS[domain][cmnd]
             if callable(translation):
-                domain, service, content = translation(self._hass.states.get(entity_id), payload)
-                data.update(content)
+                domain_list, service_list, data_list = translation(self._hass.states.get(entity_id), payload)
+                _LOGGER.debug('domain_list: %s', domain_list)
+                _LOGGER.debug('service_list: %s', service_list)
+                _LOGGER.debug('data_list: %s', data_list)
+                for d in data_list:
+                    if 'entity_id' not in d:
+                        d.update(data)
             else:
-                service = translation
+                service_list[0] = translation
         else:
-            service = self._getControlService(cmnd)
+            service_list[0] = self._getControlService(cmnd)
 
-        with AsyncTrackStates(self._hass) as changed_states:
-            result = await self._hass.services.async_call(domain, service, data, True)
-
-        return {} if result else self._errorResult('IOT_DEVICE_OFFLINE')
+        for i in range(len(domain_list)):
+            _LOGGER.debug('domain: %s, servcie: %s, data: %s', domain_list[i], service_list[i], data_list[i])
+            with AsyncTrackStates(self._hass) as changed_states:
+                result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
+            if not result:
+                return self._errorResult('IOT_DEVICE_OFFLINE')
+        
+        return {}
 
     def _queryDevice(self, cmnd, payload):
         entity_id = decrypt_device_id(payload['deviceId'])
