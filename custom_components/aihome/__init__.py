@@ -35,8 +35,6 @@ import async_timeout
 import aiohttp
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-REQUIREMENTS = ['paho-mqtt>=1.4.0']
-
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
