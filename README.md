@@ -2,6 +2,9 @@
 建议前往[博客](https://ljr.im/articles/plugin-smart-speaker-access-home-assistant-integration/)查看更详细的介绍；注意检查HA日志插件是否成功启动；使用过程中有疑问请加QQ群307773400交流。
 
 # 更新日志
+- 2019-05-03
+  1.input_boolean实体支持对调节亮度操作指令映射service
+  2.HA 0.92.1版本测试
 - 2019-04-09
   1. 增加设备配置样例（使用packages方式导入即可测试）
   2. 修复叮咚启动不同步信息bug。
