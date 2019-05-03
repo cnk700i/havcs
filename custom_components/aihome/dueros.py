@@ -13,16 +13,14 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
-
 import copy
-from .util import (decrypt_device_id,encrypt_entity_id,CONTEXT_AIHOME)
+from .util import (decrypt_device_id, encrypt_entity_id, DOMAIN_SERVICE_WITHOUT_ENTITY_ID, AIHOME_ACTIONS_ALIAS)
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
 DOMAIN = 'dueros'
-
 
 async def async_setup(hass, config):
     hass.http.register_view(DuerosGateView(hass))
@@ -101,7 +99,7 @@ class Dueros:
             'media_player': 'TV_SET',
             'switch': 'SWITCH',
             'vacuum': 'SWEEPING_ROBOT',
-            'sensor': 'sensor',
+            'sensor': 'SENSOR',
             'cover': 'CURTAIN'
             }
 
@@ -181,7 +179,7 @@ class Dueros:
                 'TurnOffRequest': 'return_to_base',
                 'TimingTurnOnRequest': 'start',
                 'TimingTurnOffRequest': 'return_to_base',
-                'SetSuctionRequest': lambda state, payload: ('vacuum', 'set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
+                'SetSuctionRequest': lambda state, payload: (['vacuum'], ['set_fan_speed'], [{'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}]),
             },
             'switch': {
                 'TurnOnRequest': 'turn_on',
@@ -194,15 +192,16 @@ class Dueros:
                 'TurnOffRequest': 'turn_off',
                 'TimingTurnOnRequest': 'turn_on',
                 'TimingTurnOffRequest': 'turn_off',
-                'SetBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['brightness']['value']}),
-                'IncrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
-                    'value'], 100)}),
-                'DecrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
-                'SetColorRequest': lambda state, payload: ('light', 'turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
+                'SetBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': payload['brightness']['value']}]),
+                'IncrementBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'],[ {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage']['value'], 100)}]),
+                'DecrementBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}]),
+                'SetColorRequest': lambda state, payload: (['light'], ['turn_on'], [{"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]}])
             },
             'input_boolean':{
-                'TurnOnRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
-                'TurnOffRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+                'TurnOnRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_on']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_on']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOffRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_off']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_off']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_off']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
+                'IncrementBrightnessPercentageRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['increase_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'DecrementBrightnessPercentageRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['decrease_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
             }
 
         }
@@ -323,32 +322,37 @@ class Dueros:
         #     }]
         # }
 
-    async def _controlDevice(self, action, payload):
-        applianceDic = payload['appliance']
-        entity_id = decrypt_device_id(applianceDic['applianceId'])
+    async def _controlDevice(self, cmnd, payload):
+        entity_id = decrypt_device_id(payload['appliance']['applianceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
+        domain_list = [domain]
+        data_list = [data]
+        service_list =['']
         if domain in self._TRANSLATIONS.keys():
-            translation = self._TRANSLATIONS[domain][action]
+            translation = self._TRANSLATIONS[domain][cmnd]
             if callable(translation):
-                domain, service, content = translation(self._hass.states.get(entity_id), payload)
-                data.update(content)
+                domain_list, service_list, data_list = translation(self._hass.states.get(entity_id), payload)
+                _LOGGER.debug('domain_list: %s', domain_list)
+                _LOGGER.debug('service_list: %s', service_list)
+                _LOGGER.debug('data_list: %s', data_list)
+                for i,d in enumerate(data_list):
+                    if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID:
+                        d.update(data)
             else:
-                service = translation
+                service_list[0] = translation
         else:
-            service = self._getControlService(action)
+            service_list[0] = self._getControlService(cmnd)
 
-        _LOGGER.debug('_controlDevice():service:%s.%s, service_data:%s',domain, service, data)
-        with AsyncTrackStates(self._hass) as changed_states:
-            result = await self._hass.services.async_call(domain, service, data, True, CONTEXT_AIHOME)
-
-        if result:
-            state = self._hass.states.get(entity_id)
-            properties,actions = self._guessPropertyAndAction(entity_id, state.attributes, state.state)
-            return {'attributes': [properties]} 
-        else:
-            return self._errorResult('IOT_DEVICE_OFFLINE')
-
+        for i in range(len(domain_list)):
+            _LOGGER.debug('domain: %s, servcie: %s, data: %s', domain_list[i], service_list[i], data_list[i])
+            with AsyncTrackStates(self._hass) as changed_states:
+                result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
+            if not result:
+                return self._errorResult('IOT_DEVICE_OFFLINE')
+        state = self._hass.states.get(entity_id)
+        properties,actions = self._guessPropertyAndAction(entity_id, state.attributes, state.state)
+        return {'attributes': [properties]}
 
     def _queryDevice(self, cmnd, payload):
         applianceDic = payload['appliance']
@@ -407,7 +411,7 @@ class Dueros:
         if domain in self._INCLUDE_DOMAINS:
             deviceTypes.append(self._INCLUDE_DOMAINS[domain])
 
-        return deviceTypes
+        return [device.upper() for device in deviceTypes]
 
 
     def _groupsAttributes(self, states):
@@ -424,6 +428,9 @@ class Dueros:
         # Support On/Off/Query only at this time
         if 'dueros_actions' in attributes:
             actions = copy.deepcopy(attributes['dueros_actions']) # fix
+        elif 'aihome_actions' in attributes:
+            actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['aihome_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
+            _LOGGER.debug('[%s] guess action from aihome standard action: %s', entity_id, actions)
         elif entity_id.startswith('switch.'):
             actions = ["turnOn", "timingTurnOn", "turnOff", "timingTurnOff"]
         elif entity_id.startswith('light.'):

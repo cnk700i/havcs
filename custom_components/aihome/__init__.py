@@ -84,8 +84,7 @@ DEFAULT_PROTOCOL = PROTOCOL_311
 DEFAULT_TLS_PROTOCOL = 'auto'
 DEFAULT_EXPIRE_IN_HOURS = 24
 DEFAULT_HA_URL = 'https://localhost:8123'
-DEFAULT_ALLOWED_URI = []
-# DEFAULT_ALLOWED_URI = ['/auth/token', '/dueros_gate', '/aligenie_gate', '/jdwhale_gate']
+DEFAULT_ALLOWED_URI = ['/auth/token', '/dueros_gate', '/aligenie_gate', '/jdwhale_gate']
 
 CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQTT broker configuration'
 
@@ -211,7 +210,6 @@ async def async_setup_entry(hass, entry):
     tls_insecure = conf.get(CONF_TLS_INSECURE)
     protocol = conf[CONF_PROTOCOL]
     allowed_uri = conf.get(CONF_ALLOWED_URI)
-    _LOGGER.info('allowed_uri: %s', allowed_uri)
     ha_url = conf.get(CONF_HA_URL)
     sync = conf.get(CONF_SYNC)
     decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]

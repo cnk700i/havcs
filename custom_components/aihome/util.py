@@ -7,13 +7,34 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
-ENTITY_KEY = ''
-CONTEXT_AIHOME = None
-
 STORAGE_VERSION = 1
 STORAGE_KEY = 'aihome'
 
+DOMAIN_SERVICE_WITHOUT_ENTITY_ID = ['climate']
+AIHOME_ACTIONS_ALIAS = {
+    'jdwhale':{
+        'turn_on': 'TurnOn',
+        'turn_off': 'TurnOff',
+        'increase_brightness': 'AdjustUpBrightness',
+        'decrease_brightness': 'AdjustDownBrightness'
+    },
+    'aligene':{
+        'turn_on': 'turnOn',
+        'turn_off': 'turnOff',
+        'increase_brightness': 'incrementBrightnessPercentage',
+        'decrease_brightness': 'decrementBrightnessPercentage'
+    },
+    'dueros':{
+        'turn_on': 'TurnOn',
+        'turn_off': 'TurnOff',
+        'increase_brightness': 'AdjustUpBrightness',
+        'decrease_brightness': 'AdjustDownBrightness'
+    }
+}
+
 bindManager = None
+ENTITY_KEY = ''
+CONTEXT_AIHOME = None
 class AESCipher:
     """
     Tested under Python 3.x and PyCrypto 2.6.1.
