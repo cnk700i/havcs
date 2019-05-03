@@ -32,3 +32,12 @@
   6. 说明文档补充设备配置样例
 - 2019-01-xx
   HA 0.86.4 和 HA 0.82.1，本地单机测试
+
+# 调试
+插件无法工作可设置插件日志debug级别以观察调试消息。
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.aihome: debug
+```
