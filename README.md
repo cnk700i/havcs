@@ -36,6 +36,7 @@
 # 调试
 插件无法工作可设置插件日志debug级别以观察调试消息。
 ```yaml
+# {HA配置目录}/configuration.yaml
 logger:
   default: info
   logs:
