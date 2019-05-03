@@ -1,0 +1,12 @@
+{
+  "domain": "aihome",
+  "name": "AIHome",
+  "documentation": "https://ljr.im",
+  "requirements": [
+    "paho-mqtt>=1.4.0"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@cnk700i"
+  ]
+}
