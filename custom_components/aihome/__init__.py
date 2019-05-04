@@ -113,7 +113,7 @@ HTTP_SCHEMA = vol.Schema({
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), ['jdwhale', 'aligenie', 'dueros']),
-        vol.Optional(CONF_HTTP): HTTP_SCHEMA,
+        vol.Optional(CONF_HTTP): vol.Any(HTTP_SCHEMA, None),
         vol.Optional(CONF_MQTT): MQTT_SCHEMA,
     })
 }, extra=vol.ALLOW_EXTRA)
