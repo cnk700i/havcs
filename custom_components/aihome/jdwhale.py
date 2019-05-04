@@ -33,7 +33,7 @@ class JdWhaleGateVidw(HomeAssistantView):
 
     url = '/jdwhale_gate'
     name = 'jdwhale_gate'
-    # requires_auth = True    # 使用request头验证token
+    # requires_auth = False    # 使用request头验证token，模式一自建技能请取消注释。
 
     def __init__(self, hass):
         """Initialize the token view."""
