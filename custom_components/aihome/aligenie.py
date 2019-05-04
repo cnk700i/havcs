@@ -12,15 +12,15 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
-import copy
-from .util import (decrypt_device_id, encrypt_entity_id, DOMAIN_SERVICE_WITHOUT_ENTITY_ID, AIHOME_ACTIONS_ALIAS)
 
+from .util import (decrypt_device_id,encrypt_entity_id)
+import copy
 
 _LOGGER = logging.getLogger(__name__)
-# _LOGGER.setLevel(logging.DEBUG)
+_LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
-DOMAIN = 'aligenie'
+DOMAIN       = 'aligenie'
 
 _places       = []
 _aliases      = []
@@ -38,7 +38,7 @@ class AliGenieGateView(HomeAssistantView):
 
     url = '/aligenie_gate'
     name = 'aligenie_gate'
-    # requires_auth = False    # 使用request头验证token，模式一自建技能请取消注释。
+    requires_auth = False    # 不使用HA内置方法验证(request头带token)，在handleRequest()中再验证
 
     def __init__(self, hass):
         """Initialize the token view."""
@@ -298,8 +298,8 @@ class Aligenie:
                 _LOGGER.debug('domain_list: %s', domain_list)
                 _LOGGER.debug('service_list: %s', service_list)
                 _LOGGER.debug('data_list: %s', data_list)
-                for i,d in enumerate(data_list):
-                    if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID:
+                for d in data_list:
+                    if 'entity_id' not in d:
                         d.update(data)
             else:
                 service_list[0] = translation
@@ -427,9 +427,6 @@ class Aligenie:
         # http://doc-bot.tmall.com/docs/doc.htm?treeId=393&articleId=108264&docType=1
         if 'aligenie_actions' in attributes:
             actions = copy.deepcopy(attributes['aligenie_actions']) # fix
-        elif 'aihome_actions' in attributes:
-            actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['aihome_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
-            _LOGGER.debug('[%s] guess action from aihome standard action: %s', entity_id, actions)
         elif entity_id.startswith('switch.'):
             actions = ["TurnOn", "TurnOff"]
         elif entity_id.startswith('light.'):

@@ -13,15 +13,15 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
-import copy
-from .util import (decrypt_device_id, encrypt_entity_id, DOMAIN_SERVICE_WITHOUT_ENTITY_ID, AIHOME_ACTIONS_ALIAS)
 
+from .util import (decrypt_device_id,encrypt_entity_id)
+import copy
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
-DOMAIN = 'jdwhale'
+DOMAIN  = 'jdwhale'
 REPORT_WHEN_STARUP = True
 
 async def async_setup(hass, config):
@@ -33,7 +33,7 @@ class JdWhaleGateVidw(HomeAssistantView):
 
     url = '/jdwhale_gate'
     name = 'jdwhale_gate'
-    # requires_auth = False    # 使用request头验证token，模式一自建技能请取消注释。
+    requires_auth = False    # 不使用HA内置方法验证(request头带token)，在handleRequest()中再验证
 
     def __init__(self, hass):
         """Initialize the token view."""
@@ -92,7 +92,7 @@ class Jdwhale:
             'media_player': 'TV_SET',
             'switch': 'SWITCH',
             'vacuum': 'SWEEPING_ROBOT',
-            'sensor': 'SENSOR',
+            'sensor': 'sensor',
             'cover': 'CURTAIN'
         }
         self._EXCLUDE_DOMAINS = [
@@ -148,7 +148,7 @@ class Jdwhale:
             'vacuum': {
                 'TurnOnRequest':  'start',
                 'TurnOffRequest': 'return_to_base',
-                'SetSuctionRequest': lambda state, payload: (['fan'], ['set_fan_speed'], [{'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}]),
+                'SetSuctionRequest': lambda state, payload: ('fan', 'set_fan_speed', {'fan_speed': 90 if payload['suction']['value'] == 'STRONG' else 60}),
             },
             'switch': {
                 'TurnOnRequest': 'turn_on',
@@ -157,16 +157,18 @@ class Jdwhale:
             'light': {
                 'TurnOnRequest':  'turn_on',
                 'TurnOffRequest': 'turn_off',
-                'SetBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': payload['brightness']['value']}]),
-                'IncrementBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage']['value'], 100)}]),
-                'DecrementBrightnessPercentageRequest': lambda state, payload: (['light'], ['turn_on'], [{'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}]),
-                'SetColorRequest': lambda state, payload: (['light'], ['turn_on'], [{"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]}])
+                'SetBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': payload['brightness']['value']}),
+                'IncrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage'][
+                    'value'], 100)}),
+                'DecrementBrightnessPercentageRequest': lambda state, payload: ('light', 'turn_on', {'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}),
+                'SetColorRequest': lambda state, payload: ('light', 'turn_on', {"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]})
+            },
+            'sensor':{
+                'QueryTemperatureRequest'
             },
             'input_boolean':{
-                'TurnOnRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_on']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_on']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
-                'TurnOffRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['turn_off']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['turn_off']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['turn_off']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
-                'AdjustUpBrightnessRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['increase_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
-                'AdjustDownBrightnessRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['decrease_brightness']]) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOnRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_on'][0], state.attributes['aihome_actions']['turn_on'][1], json.loads(state.attributes['aihome_actions']['turn_on'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_on', {}),
+                'TurnOffRequest': lambda state, payload:(state.attributes['aihome_actions']['turn_off'][0], state.attributes['aihome_actions']['turn_off'][1], json.loads(state.attributes['aihome_actions']['turn_off'][2])) if state.attributes.get('aihome_actions') else ('input_boolean', 'turn_off', {}),
             }
 
         }
@@ -247,13 +249,12 @@ class Jdwhale:
                 continue
 
             entity_id = state.entity_id
-            # _LOGGER.debug('1.entity_id: %s, attributes: %s', entity_id, attributes)
+            # _LOGGER.debug('-----entity_id: %s, attributes: %s', entity_id, attributes)
             deviceType = self._guessDeviceType(entity_id, attributes)
             if deviceType is None:
                 continue
 
             properties,actions = self._guessPropertyAndAction(entity_id, attributes, state.state)
-            # _LOGGER.debug('2.entity_id: %s, properties: %s, actions: %s',entity_id, properties, actions)
             # if properties is None:
             #     continue
             if deviceType == 'sensor':
@@ -288,32 +289,22 @@ class Jdwhale:
         entity_id = decrypt_device_id(payload['deviceId'])
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
-        domain_list = [domain]
-        data_list = [data]
-        service_list =['']
         if domain in self._TRANSLATIONS.keys():
             translation = self._TRANSLATIONS[domain][cmnd]
             if callable(translation):
-                domain_list, service_list, data_list = translation(self._hass.states.get(entity_id), payload)
-                _LOGGER.debug('domain_list: %s', domain_list)
-                _LOGGER.debug('service_list: %s', service_list)
-                _LOGGER.debug('data_list: %s', data_list)
-                for i,d in enumerate(data_list):
-                    if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID:
-                        d.update(data)
+                domain, service, content = translation(self._hass.states.get(entity_id), payload)
+                data.update(content)
             else:
-                service_list[0] = translation
+                service = translation
         else:
-            service_list[0] = self._getControlService(cmnd)
+            service = self._getControlService(cmnd)
 
-        for i in range(len(domain_list)):
-            _LOGGER.debug('domain: %s, servcie: %s, data: %s', domain_list[i], service_list[i], data_list[i])
-            with AsyncTrackStates(self._hass) as changed_states:
-                result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
-            if not result:
-                return self._errorResult('IOT_DEVICE_OFFLINE')
-        
-        return {"result": "SUCCESS"}
+        _LOGGER.info(self._hass.states.get(entity_id).attributes)
+        with AsyncTrackStates(self._hass) as changed_states:
+            result = await self._hass.services.async_call(domain, service, data, True)
+
+        return {"result": "SUCCESS"} if result else self._errorResult('IOT_DEVICE_OFFLINE')
+
 
     def _queryDevice(self, cmnd, payload):
         entity_id = decrypt_device_id(payload['deviceId'])
@@ -352,7 +343,7 @@ class Jdwhale:
 
     def _guessDeviceType(self, entity_id, attributes):
         if 'jdwhale_deviceType' in attributes:
-            return attributes['jdwhale_deviceType'].upper()
+            return attributes['jdwhale_deviceType']
 
         # Exclude with domain
         domain = entity_id[:entity_id.find('.')]
@@ -362,7 +353,7 @@ class Jdwhale:
         # Guess from entity_id
         for deviceType in self._DEVICE_TYPES.keys():
             if deviceType in entity_id:
-                return deviceType.upper()
+                return deviceType
 
         # Map from domain
         if domain in self._INCLUDE_DOMAINS:
@@ -386,13 +377,10 @@ class Jdwhale:
         # Support On/Off/Query only at this time
         if 'jdwhale_actions' in attributes:
             actions = copy.deepcopy(attributes['jdwhale_actions']) # fix
-        elif 'aihome_actions' in attributes:
-            actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['aihome_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
-            _LOGGER.debug('[%s] guess action from aihome standard action: %s', entity_id, actions)
         elif entity_id.startswith('switch.'):
             actions = ["TurnOn", "TurnOff"]
         elif entity_id.startswith('light.'):
-            actions = ["TurnOn", "TurnOff", "SetBrightness", "AdjustUpBrightness", "AdjustDownBrightness", "SetColor"]
+            actions = ["TurnOn", "TurnOff", "SetBrightness", "AdjustUpBrightness", "AdjustDownBrightness", "setColor"]
         elif entity_id.startswith('cover.'):
             actions = ["TurnOn", "TurnOff", "Pause"]
         elif entity_id.startswith('vacuum.'):
