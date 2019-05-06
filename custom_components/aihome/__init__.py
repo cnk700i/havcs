@@ -384,7 +384,7 @@ async def async_setup_entry(hass, entry):
                             CACHED_TOKEN.append(refresh_token.id)
                             break
             except jwt.InvalidTokenError:
-                _LOGGER.debug('[http_proxy] request from %s has a invalid token, try another reauthorization on website.', platform)
+                _LOGGER.debug('[http_proxy] request from %s(%s) has a invalid token, try another reauthorization on website.', platform, url)
  
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
