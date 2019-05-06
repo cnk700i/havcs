@@ -12,55 +12,24 @@ from typing import Optional
 from datetime import timedelta
 from homeassistant.helpers.state import AsyncTrackStates
 from urllib.request import urlopen
-
-from .util import (decrypt_device_id,encrypt_entity_id)
 import copy
+from .util import (decrypt_device_id, encrypt_entity_id, DOMAIN_SERVICE_WITHOUT_ENTITY_ID, AIHOME_ACTIONS_ALIAS)
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+# _LOGGER.setLevel(logging.DEBUG)
 
 AI_HOME = True
-DOMAIN       = 'aligenie'
-
-_places       = []
-_aliases      = []
-
-async def async_setup(hass, config):
-    hass.http.register_view(AliGenieGateView(hass))
-    global _places, _aliases
-    _places  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
-    _aliases = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
-    _aliases.append({'key': '电视', 'value': ['电视机']})
-    return True
-
-class AliGenieGateView(HomeAssistantView):
-    """View to handle Configuration requests."""
-
-    url = '/aligenie_gate'
-    name = 'aligenie_gate'
-    requires_auth = False    # 不使用HA内置方法验证(request头带token)，在handleRequest()中再验证
-
-    def __init__(self, hass):
-        """Initialize the token view."""
-        self._aligenie = Aligenie(hass)
-    async def post(self, request):
-        """Update state of entity."""
-        _LOGGER.debug('request: %s', request)
-        try:
-            data = await request.json()
-            response = await self._aligenie.handleRequest(data)
-        except:
-            import traceback
-            _LOGGER.error(traceback.format_exc())
-            response = {}
-        return self.json(response)
-        
+DOMAIN = 'aligenie'
+       
 def createHandler(hass):
     return Aligenie(hass)
 
 class Aligenie:
     def __init__(self, hass):
         self._hass = hass
+        self._places  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
+        self._aliases = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
+        self._aliases.append({'key': '电视', 'value': ['电视机']})
         self._DEVICE_TYPES = {
             'television': '电视',
             'light': '灯',
@@ -183,7 +152,7 @@ class Aligenie:
         }
         return {'errorCode': errorCode, 'message': messsage if messsage else messages[errorCode]}
 
-    async def handleRequest(self, data, ignoreToken = False):
+    async def handleRequest(self, data, auth = False):
         """Handle request"""
         header = data['header']
         payload = data['payload']
@@ -191,8 +160,7 @@ class Aligenie:
         name = header['name']
         _LOGGER.info("Handle Request: %s", data)
 
-        token = await self._hass.auth.async_validate_access_token(payload['accessToken'])
-        if ignoreToken or token is not None:
+        if auth:
             namespace = header['namespace']
             if namespace == 'AliGenie.Iot.Device.Discovery':
                 discovery_devices, _ = self._discoveryDevice()
@@ -244,11 +212,11 @@ class Aligenie:
             if deviceType is None:
                 continue
 
-            deviceName = self._guessDeviceName(entity_id, attributes, _places, _aliases)
+            deviceName = self._guessDeviceName(entity_id, attributes, self._places, self._aliases)
             if deviceName is None:
                 continue
 
-            zone = self._guessZone(entity_id, attributes, groups_ttributes, _places)
+            zone = self._guessZone(entity_id, attributes, groups_ttributes, self._places)
             # if zone is None:
             #     # continue
 
@@ -298,8 +266,8 @@ class Aligenie:
                 _LOGGER.debug('domain_list: %s', domain_list)
                 _LOGGER.debug('service_list: %s', service_list)
                 _LOGGER.debug('data_list: %s', data_list)
-                for d in data_list:
-                    if 'entity_id' not in d:
+                for i,d in enumerate(data_list):
+                    if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID:
                         d.update(data)
             else:
                 service_list[0] = translation
@@ -427,6 +395,9 @@ class Aligenie:
         # http://doc-bot.tmall.com/docs/doc.htm?treeId=393&articleId=108264&docType=1
         if 'aligenie_actions' in attributes:
             actions = copy.deepcopy(attributes['aligenie_actions']) # fix
+        elif 'aihome_actions' in attributes:
+            actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['aihome_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
+            _LOGGER.debug('[%s] guess action from aihome standard action: %s', entity_id, actions)
         elif entity_id.startswith('switch.'):
             actions = ["TurnOn", "TurnOff"]
         elif entity_id.startswith('light.'):

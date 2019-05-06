@@ -1,8 +1,9 @@
 """
 author: cnk700i
 blog: ljr.im
-tested On HA version: 0.90.2
+tested On HA version: 0.92.1
 """
+import homeassistant.util as hass_util
 from . import util as aihome_util
 from typing import cast
 import jwt
@@ -29,7 +30,7 @@ from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, EVENT_HOMEASSISTANT_S
 from . import config_flow
 from voluptuous.humanize import humanize_error
 import traceback
-
+from homeassistant.components.http import HomeAssistantView
 import asyncio
 import async_timeout
 import aiohttp
@@ -41,6 +42,8 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'aihome'
 HANDLER = {}
 EXPIRATION = {}
+CACHED_TOKEN = []
+MODE = []
 
 DATA_AIHOME_CONFIG = 'aihome_config'
 DATA_AIHOME_MQTT = 'aihome_mqtt'
@@ -63,9 +66,11 @@ CONF_USER_ID = 'user_id'
 CONF_HA_URL = 'ha_url'
 CONF_SYNC = 'sync'
 
-CONF_HTTP = 'http'
-CONF_MQTT = 'mqtt'
 CONF_PLATFORM = 'platform'
+CONF_HTTP = 'http'
+CONF_HTTP_PROXY = 'http_proxy'
+CONF_SKILL = 'skill'
+CONF_SETTING = 'setting'
 CONF_EXPIRE_IN_HOURS = 'expire_in_hours'
 
 CONF_BIRTH_MESSAGE = 'birth_message'
@@ -81,40 +86,49 @@ DEFAULT_QOS = 0
 DEFAULT_PROTOCOL = PROTOCOL_311
 DEFAULT_TLS_PROTOCOL = 'auto'
 DEFAULT_EXPIRE_IN_HOURS = 24
-DEFAULT_HA_URL = 'https://localhost:8123'
-DEFAULT_ALLOWED_URI = ['/auth/token', '/dueros_gate', '/aligenie_gate', '/jdwhale_gate']
+DEFAULT_ALLOWED_URI = ['/auth/token', '/aihome_service']
 
 CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQTT broker configuration'
 
-MQTT_SCHEMA = vol.Schema({
-        vol.Optional(CONF_CLIENT_ID): cv.string,
-        vol.Optional(CONF_KEEPALIVE, default=DEFAULT_KEEPALIVE): vol.All(vol.Coerce(int), vol.Range(min=15)),
-        vol.Optional(CONF_BROKER, default=DEFAULT_BROKER): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-        vol.Required(CONF_APP_KEY): cv.string,
-        vol.Required(CONF_APP_SECRET): cv.string,
-        vol.Optional(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
-        vol.Inclusive(CONF_CLIENT_KEY, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
-        vol.Inclusive(CONF_CLIENT_CERT, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
-        vol.Optional(CONF_TLS_INSECURE, default=True): cv.boolean,
-        vol.Optional(CONF_TLS_VERSION, default=DEFAULT_TLS_PROTOCOL): vol.Any('auto', '1.0', '1.1', '1.2'),
-        vol.Optional(CONF_PROTOCOL, default=DEFAULT_PROTOCOL): vol.All(cv.string, vol.In([PROTOCOL_31, PROTOCOL_311])),
-        vol.Optional(CONF_TOPIC): cv.string,
-        vol.Optional(CONF_ALLOWED_URI, default=DEFAULT_ALLOWED_URI): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
-        vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
-        vol.Optional(CONF_USER_ID): cv.string,
-        vol.Optional(CONF_HA_URL, default=DEFAULT_HA_URL): cv.string,
-        vol.Optional(CONF_SYNC, default=False): cv.boolean,
-}, extra=vol.ALLOW_EXTRA)
+SETTING_SCHEMA = vol.Schema({
+    vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
+    vol.Required(CONF_APP_KEY): cv.string,
+    vol.Required(CONF_APP_SECRET): cv.string,
+    vol.Optional(CONF_USER_ID): cv.string,
+    vol.Optional(CONF_CERTIFICATE): vol.Any('auto', cv.isfile),
+    vol.Optional(CONF_CLIENT_ID): cv.string,
+    vol.Optional(CONF_KEEPALIVE, default=DEFAULT_KEEPALIVE): vol.All(vol.Coerce(int), vol.Range(min=15)),
+    vol.Optional(CONF_BROKER, default=DEFAULT_BROKER): cv.string,
+    vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+    vol.Inclusive(CONF_CLIENT_KEY, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
+    vol.Inclusive(CONF_CLIENT_CERT, 'client_key_auth', msg=CLIENT_KEY_AUTH_MSG): cv.isfile,
+    vol.Optional(CONF_TLS_INSECURE, default=True): cv.boolean,
+    vol.Optional(CONF_TLS_VERSION, default=DEFAULT_TLS_PROTOCOL): vol.Any('auto', '1.0', '1.1', '1.2'),
+    vol.Optional(CONF_PROTOCOL, default=DEFAULT_PROTOCOL): vol.All(cv.string, vol.In([PROTOCOL_31, PROTOCOL_311])),
+    vol.Optional(CONF_TOPIC): cv.string,
+})
+
 HTTP_SCHEMA = vol.Schema({
     vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
-}, extra=vol.ALLOW_EXTRA)
+})
+
+HTTP_PROXY = vol.Schema({
+    vol.Optional(CONF_HA_URL): cv.string,
+    vol.Optional(CONF_ALLOWED_URI, default=DEFAULT_ALLOWED_URI): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
+    vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
+})
+
+SKILL_SCHEMA = vol.Schema({
+    vol.Optional(CONF_SYNC, default=False): cv.boolean,
+})
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), ['jdwhale', 'aligenie', 'dueros']),
         vol.Optional(CONF_HTTP): vol.Any(HTTP_SCHEMA, None),
-        vol.Optional(CONF_MQTT): MQTT_SCHEMA,
+        vol.Optional(CONF_HTTP_PROXY): vol.Any(HTTP_PROXY, None),
+        vol.Optional(CONF_SKILL): vol.Any(SKILL_SCHEMA, None),
+        vol.Optional(CONF_SETTING): vol.Any(SETTING_SCHEMA, None),
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -125,7 +139,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     if conf is None:
         # If we have a config entry, setup is done by that config entry.
         # If there is no config entry, this should fail.
-        return bool(hass.config_entries.async_entries(DOMAIN))
+        return bool(hass.config_entries.async_entries(DOMAIN))     
 
     hass.data[DATA_AIHOME_CONFIG] = conf
 
@@ -135,43 +149,52 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
             DOMAIN, context={'source': config_entries.SOURCE_IMPORT},
             data={}
         ))
-    if CONF_MQTT in conf:            
-        aihome_util.ENTITY_KEY = conf.get(CONF_MQTT).get(CONF_ENTITY_KEY)
-    if CONF_USER_ID in conf:
-        aihome_util.CONTEXT_AIHOME = Context(conf.get(CONF_MQTT).get(CONF_USER_ID))
 
-    global EXPIRATION
+    if CONF_HTTP in conf:
+        if conf.get(CONF_HTTP) is None:
+            conf[CONF_HTTP] = HTTP_SCHEMA({})
+        hass.http.register_view(AihomeGateView(hass))
+        EXPIRATION[CONF_HTTP] = timedelta(hours=conf.get(CONF_HTTP).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
+        _LOGGER.info('[init] aihome run with "http mode"(mode 1)')
+        MODE.append('http')
+    if CONF_HTTP_PROXY in conf:
+        if conf.get(CONF_HTTP_PROXY) is None:
+            conf[CONF_HTTP_PROXY] = HTTP_PROXY({})
+        EXPIRATION[CONF_HTTP_PROXY] = timedelta(hours=conf.get(CONF_HTTP_PROXY).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
+        _LOGGER.info('[init] aihome run with "http_proxy mode"(mode 2)')
+        if CONF_SETTING not in conf:
+            _LOGGER.error('[init] fail to start aihome: http_proxy mode require mqtt congfiguration')
+            return False
+        MODE.append('http_proxy')
+    if CONF_SKILL in conf:
+        if conf.get(CONF_SKILL) is None:
+            conf[CONF_SKILL] = SKILL_SCHEMA({})
+        _LOGGER.info('[init] aihome run with "skill mode"(mode 3)')
+        if CONF_SETTING not in conf:
+            _LOGGER.error('[init] fail to start aihome: skil mode require mqtt congfiguration')
+            return False
+        MODE.append('skill')
+    
+    aihome_util.ENTITY_KEY = conf.get(CONF_SETTING, {}).get(CONF_ENTITY_KEY)
+    aihome_util.CONTEXT_AIHOME = Context(conf.get(CONF_SETTING, {}).get(CONF_USER_ID))
+
     platform = conf[CONF_PLATFORM]
     manager = hass.data[DATA_AIHOME_BIND_MANAGER] = aihome_util.BindManager(hass,platform)
     await manager.async_load()
 
     for p in platform:
-        if CONF_HTTP in conf:
-            _LOGGER.debug('http: %s', p)
+        try:
             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
-            if hasattr(module, 'AI_HOME'):
-                await module.async_setup(hass, config)
-            elif p == 'dueros':
-                setattr(module, '_hass', hass)
-                view = getattr(module, 'DuerosGateView')()
-                hass.http.register_view(view)
-            elif p == 'aligenie':
-                setattr(module, '_hass', hass)
-                view = getattr(module, 'AliGenieGateView')()
-                hass.http.register_view(view)
-            EXPIRATION[p] = timedelta(hours=conf[CONF_HTTP].get(CONF_EXPIRE_IN_HOURS))
-        if CONF_MQTT in conf:
-            module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
-            if module.AI_HOME is not None:
-                HANDLER[p] = module.createHandler(hass)
-            else:
-                HANDLER[p] = module
+            HANDLER[p] = module.createHandler(hass)
+        except ImportError:
+            _LOGGER.error('[init] Unable to import %s.%s', DOMAIN, p)
+            return False
 
     return True
 
 async def async_setup_entry(hass, entry):
     """Load a config entry."""
-    conf = hass.data.get(DATA_AIHOME_CONFIG).get(CONF_MQTT)
+    conf = hass.data.get(DATA_AIHOME_CONFIG)
 
     # Config entry was created because user had configuration.yaml entry
     # They removed that, so remove entry.
@@ -184,33 +207,41 @@ async def async_setup_entry(hass, entry):
     if conf is None:
         conf = CONFIG_SCHEMA({
             DOMAIN: entry.data,
-        })[DOMAIN].get(CONF_MQTT)
+        })[DOMAIN]
     elif any(key in conf for key in entry.data):
         _LOGGER.warning(
-            "Data in your config entry is going to override your "
+            "[init] Data in your config entry is going to override your "
             "configuration.yaml: %s", entry.data)
 
     conf.update(entry.data)
 
-    broker = conf[CONF_BROKER]
-    port = conf[CONF_PORT]
-    client_id = conf.get(CONF_CLIENT_ID)
-    keepalive = conf[CONF_KEEPALIVE]
-    app_key = conf.get(CONF_APP_KEY)
-    app_secret = conf.get(CONF_APP_SECRET)
+    if CONF_HTTP_PROXY not in conf and CONF_SKILL not in conf:
+        _LOGGER.debug('[init] aihome only run in http mode, skip mqtt initialization')
+        return True
+
+    setting_conf = conf.get(CONF_SETTING)
+    app_key = setting_conf.get(CONF_APP_KEY)
+    app_secret = setting_conf.get(CONF_APP_SECRET)
+    decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]
+
+    allowed_uri = conf.get(CONF_HTTP_PROXY, {}).get(CONF_ALLOWED_URI)
+    ha_url = conf.get(CONF_HTTP_PROXY, {}).get(CONF_HA_URL, hass.config.api.base_url)
+
+    sync = conf.get(CONF_SKILL, {}).get(CONF_SYNC)
+
+    broker = setting_conf[CONF_BROKER]
+    port = setting_conf[CONF_PORT]
+    client_id = setting_conf.get(CONF_CLIENT_ID)
+    keepalive = setting_conf[CONF_KEEPALIVE]
     certificate = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ca.crt')
     if os.path.exists(certificate):
-        _LOGGER.info('auto load ca.crt from %s', certificate)
+        _LOGGER.debug('[init] sucess to autoload ca.crt from %s', certificate)
     else:
-        certificate = conf.get(CONF_CERTIFICATE)
-    client_key = conf.get(CONF_CLIENT_KEY)
-    client_cert = conf.get(CONF_CLIENT_CERT)
-    tls_insecure = conf.get(CONF_TLS_INSECURE)
-    protocol = conf[CONF_PROTOCOL]
-    allowed_uri = conf.get(CONF_ALLOWED_URI)
-    ha_url = conf.get(CONF_HA_URL)
-    sync = conf.get(CONF_SYNC)
-    decrypt_key =bytes().fromhex(sha1(app_secret.encode("utf-8")).hexdigest())[0:16]
+        certificate = setting_conf.get(CONF_CERTIFICATE)
+    client_key = setting_conf.get(CONF_CLIENT_KEY)
+    client_cert = setting_conf.get(CONF_CLIENT_CERT)
+    tls_insecure = setting_conf.get(CONF_TLS_INSECURE)
+    protocol = setting_conf[CONF_PROTOCOL]
 
     # For cloudmqtt.com, secured connection, auto fill in certificate
     if (certificate is None and 19999 < conf[CONF_PORT] < 30000 and
@@ -222,18 +253,18 @@ async def async_setup_entry(hass, entry):
     elif certificate == 'auto':
         certificate = requests.certs.where()
 
-    if CONF_WILL_MESSAGE in conf:
+    if CONF_WILL_MESSAGE in setting_conf:
         will_message = mqtt.Message(**conf[CONF_WILL_MESSAGE])
     else:
         will_message = None
 
-    if CONF_BIRTH_MESSAGE in conf:
+    if CONF_BIRTH_MESSAGE in setting_conf:
         birth_message = mqtt.Message(**conf[CONF_BIRTH_MESSAGE])
     else:
         birth_message = None
 
     # Be able to override versions other than TLSv1.0 under Python3.6
-    conf_tls_version = conf.get(CONF_TLS_VERSION)  # type: str
+    conf_tls_version = setting_conf.get(CONF_TLS_VERSION)  # type: str
     if conf_tls_version == '1.2':
         tls_version = ssl.PROTOCOL_TLSv1_2
     elif conf_tls_version == '1.1':
@@ -269,7 +300,7 @@ async def async_setup_entry(hass, entry):
     success = await hass.data[DATA_AIHOME_MQTT].async_connect()  # type: bool
 
     if not success:
-        _LOGGER.error('can not connect to mqtt server, check mqtt server\'s address and port.')
+        _LOGGER.error('[init] can not connect to mqtt server, check mqtt server\'s address and port.')
         return False
 
     async def start_aihome(event: Event):
@@ -281,7 +312,7 @@ async def async_setup_entry(hass, entry):
                     devices,entity_ids = HANDLER[platform]._discoveryDevice()
                     bind_entity_ids,unbind_entity_ids = await hass.data['aihome_bind_manager'].async_save_changed_devices(entity_ids,platform, p_user_id,True)
                     payload = await HANDLER[platform].bind_device(p_user_id, entity_ids , unbind_entity_ids, devices)
-                    _LOGGER.debug('[%s] report request: bind_entity_ids:%s, unbind_entity_ids:%s', platform, bind_entity_ids, unbind_entity_ids)
+                    _LOGGER.debug('[skill] bind device to %s: bind_entity_ids = %s, unbind_entity_ids = %s', platform, bind_entity_ids, unbind_entity_ids)
 
                     if payload:
                         url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
@@ -290,14 +321,14 @@ async def async_setup_entry(hass, entry):
                             session = async_get_clientsession(hass, verify_ssl=False)
                             with async_timeout.timeout(5, loop=hass.loop):
                                 response = await session.post(url, data=data)
-                                _LOGGER.debug('[%s] report response:%s', platform, await response.text())
+                                _LOGGER.debug('[skill] get bind device result from %s: %s', platform, await response.text())
                         except(asyncio.TimeoutError, aiohttp.ClientError):
-                            _LOGGER.error("Error while accessing: %s", url)
+                            _LOGGER.error("[skill] fail to access %s, bind device fail: timeout", url)
         await async_bind_device()
 
         @callback
         def report_device(event):
-            _LOGGER.debug('%s changed', event.data[ATTR_ENTITY_ID])
+            # _LOGGER.debug('[skill] %s changed, try to report', event.data[ATTR_ENTITY_ID])
             hass.add_job(async_report_device(event))
 
         async def async_report_device(event):
@@ -308,7 +339,7 @@ async def async_setup_entry(hass, entry):
             for platform, handler in HANDLER.items():
                 if hasattr(handler, 'report_device'):
                     payload = HANDLER[platform].report_device(entity.entity_id)
-                    _LOGGER.debug('[%s] report device: %s, %s, %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
+                    _LOGGER.debug('[skill] report device to %s: platform = %s, entity_id = %s, data = %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
                     if payload:
                         url = 'https://ai-home.ljr.im/skill/'+platform+'.php?v=report&AppKey='+app_key
                         data = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
@@ -316,9 +347,9 @@ async def async_setup_entry(hass, entry):
                             session = async_get_clientsession(hass, verify_ssl=False)
                             with async_timeout.timeout(5, loop=hass.loop):
                                 response = await session.post(url, data=data)
-                                _LOGGER.debug('[%s] report response:%s', platform, await response.text())
+                                _LOGGER.debug('[skill] get report device result from %s: %s', platform, await response.text())
                         except(asyncio.TimeoutError, aiohttp.ClientError):
-                            _LOGGER.error("Error while accessing: %s", url)
+                            _LOGGER.error("[skill] fail to access %s, report device fail: timeout", url)
 
         if sync:
             hass.bus.async_listen(EVENT_STATE_CHANGED, report_device)
@@ -333,53 +364,47 @@ async def async_setup_entry(hass, entry):
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_stop_mqtt)
 
-    async def async_http_handler(resData,topic):
+    async def async_http_proxy_handler(resData,topic):
         url = ha_url + resData['uri']
+        _LOGGER.debug('[http_proxy] request: url = %s', url)
         if('content' in resData):
-            _LOGGER.debug('---POST---')
-            if 'AliGenie' in resData['content']:
-                platform = 'aligenie'
-            elif 'DuerOS' in resData['content']:
-                platform = 'dueros'
-            elif 'Alpha' in resData['content']:
-                platform = 'jdwhale'
-            else:
-                platform = 'unknown'
-            if platform in EXPIRATION:
-                auth_type, auth_value = resData['headers'].get('Authorization').split(' ', 1)
-                try:
-                    unverif_claims = jwt.decode(auth_value, verify=False)
-                    refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
-                    if refresh_token is not None:
-                        refresh_token.access_token_expiration = EXPIRATION[platform]
-                        for user in hass.auth._store._users.values():
-                            if refresh_token.id in user.refresh_tokens:
-                                user.refresh_tokens[refresh_token.id] = refresh_token
-                                hass.auth._store._async_schedule_save()
-                                EXPIRATION.pop(platform)
-                                break
-                except jwt.InvalidTokenError:
-                    pass
+            # _LOGGER.debug('[http_proxy] use POST method')
+            platform = resData.get('platform', aihome_util.findPlatformInCommand(resData['content']))
+            auth_type, auth_value = resData.get('headers', {}).get('Authorization',' ').split(' ', 1)
+            try:
+                unverif_claims = jwt.decode(auth_value, verify=False)
+                refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
+                if refresh_token and refresh_token.id not in CACHED_TOKEN:
+                    for user in hass.auth._store._users.values():
+                        if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != EXPIRATION.get(CONF_HTTP_PROXY):
+                            _LOGGER.debug('[http_proxy] set new expiration time for access_token[%s]', refresh_token.id)
+                            refresh_token.access_token_expiration = EXPIRATION.get(CONF_HTTP_PROXY)
+                            user.refresh_tokens[refresh_token.id] = refresh_token
+                            hass.auth._store._async_schedule_save()
+                            CACHED_TOKEN.append(refresh_token.id)
+                            break
+            except jwt.InvalidTokenError:
+                _LOGGER.debug('[http_proxy] request from %s has a invalid token, try another reauthorization on website.', platform)
  
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
                 with async_timeout.timeout(5, loop=hass.loop):
                     response = await session.post(url, data=resData['content'], headers = resData.get('headers'))
             except(asyncio.TimeoutError, aiohttp.ClientError):
-                _LOGGER.error("Error while accessing: %s", url)
+                _LOGGER.error("[http_proxy] fail to access %s in local network: timeout", url)
 
         else:
-            _LOGGER.debug('---GET---')
+            # _LOGGER.debug('[http_proxy] use GET method')
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
                 with async_timeout.timeout(5, loop=hass.loop):
                     response = await session.get(url, headers = resData.get('headers'))
             except(asyncio.TimeoutError, aiohttp.ClientError):
-                _LOGGER.error("Error while accessing: %s", url)
-            # _LOGGER.debug(response.history) #查看重定向信息
+                _LOGGER.error("[http_proxy] fail to access %s in local network: timeout", url)
+            # _LOGGER.debug("[http_proxy] %s", response.history) #查看重定向信息
         if response is not None:
             if response.status != 200:
-                _LOGGER.error("Error while accessing: %s, status=%d",url,response.status)
+                _LOGGER.error("[http_proxy] fail to access %s in local network: status=%d",url,response.status)
             if('image' in response.headers['Content-Type'] or 'stream' in response.headers['Content-Type']):
                 result = await response.read()
                 result = b64encode(result).decode()
@@ -400,33 +425,25 @@ async def async_setup_entry(hass, entry):
                 'content': '{"error":"time_out"}',
                 'msgId': resData.get('msgId')
             }
-        _LOGGER.debug("%s response[%s]: [%s]", resData['uri'].split('/')[-1].split('?')[0], resData.get('msgId'), response.headers['Content-Type'], )
+        _LOGGER.debug("[http_proxy] response: uri = %s, msgid = %s, type = %s", resData['uri'].split('?')[0], resData.get('msgId'), response.headers['Content-Type'])
         res = aihome_util.AESCipher(decrypt_key).encrypt(json.dumps(res, ensure_ascii = False).encode('utf8'))
 
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
-    async def async_module_handler(resData,topic):
-        if 'platform' in resData:
-            platform = resData['platform']
-        elif 'AliGenie' in resData['content']:
-            platform = 'aligenie'
-        elif 'DuerOS' in resData['content']:
-            platform = 'dueros'
-        elif 'Alpha' in resData['content']:
-            platform = 'jdwhale'
-        else:
-            platform = 'unknown'
-            _LOGGER.error('receive command from unsupport platform "%s".', platform)
+    async def async_module_handler(resData, topic):
+        platform = resData.get('platform', aihome_util.findPlatformInCommand(resData['content']))
+        if platform == 'unknown':
+            _LOGGER.error('[skill] receive command from unsupport platform "%s".', platform)
             return
         if platform not in HANDLER:
-            _LOGGER.error('receive command from uninitialized platform "%s" , check up your configuration.yaml.', platform)
+            _LOGGER.error('[skill] receive command from uninitialized platform "%s" , check up your configuration.yaml.', platform)
             return
         try:
-            response = await HANDLER[platform].handleRequest(json.loads(resData['content']), ignoreToken = True)
+            response = await HANDLER[platform].handleRequest(json.loads(resData['content']), auth = True)
         except:
             response = '{"error":"service error"}'
             import traceback
-            _LOGGER.error(traceback.format_exc())
+            _LOGGER.error('[skill] %s', traceback.format_exc())
         res = {
                 'headers': {'Content-Type': 'application/json;charset=utf-8'},
                 'status': 200,
@@ -462,17 +479,25 @@ async def async_setup_entry(hass, entry):
         try:
             payload = aihome_util.AESCipher(decrypt_key).decrypt(payload)
             req = json.loads(payload)
+
             if req.get('msgType') == 'hello':
-                _LOGGER.info(req.get('content'))
+                _LOGGER.info('[mqtt] %s', req.get('content'))
                 return
-            _LOGGER.debug("[%s] raw message: %s", req.get('platform'), req)
+            
+            _LOGGER.debug("[mqtt] raw message: %s", req)
             if req.get('platform') == 'h2m2h':
+                if('http_proxy' not in MODE):
+                    _LOGGER.info('[http_proxy] aihome not run in http_proxy mode, ignore request: %s', req)
+                    return
                 if(allowed_uri and req.get('uri','/').split('?')[0] not in allowed_uri):
-                    _LOGGER.debug('uri not allowed: %s', req.get('uri','/'))
+                    _LOGGER.info('[http_proxy] uri not allowed: %s', req.get('uri','/'))
                     hass.add_job(async_publish_error(req, topic))
                     return
-                hass.add_job(async_http_handler(req, topic))
+                hass.add_job(async_http_proxy_handler(req, topic))
             else:
+                if('skill' not in MODE):
+                    _LOGGER.info('[skill] aihome not run in skill mode, ignore request: %s', req)
+                    return 
                 hass.add_job(async_module_handler(req, topic))
 
         except (JSONDecodeError,UnicodeDecodeError,binascii.Error):
@@ -481,7 +506,48 @@ async def async_setup_entry(hass, entry):
             log = ''
             for stack in traceback.extract_tb(ex_stack):
                 log += str(stack)
-            _LOGGER.debug('decrypt failure, abandon:%s', log)
+            _LOGGER.debug('[mqtt] decrypt fail, abandon:%s', log)
 
     await hass.data[DATA_AIHOME_MQTT].async_subscribe("ai-home/http2mqtt2hass/"+app_key+"/request/#", message_received, 2, 'utf-8')
     return True
+
+class AihomeGateView(HomeAssistantView):
+    """View to handle Configuration requests."""
+
+    url = '/aihome_service'
+    name = 'aihome_service'
+    requires_auth = False    # 不使用HA内置方法验证(request头带token)，在handleRequest()中再验证
+
+    def __init__(self, hass):
+        self._hass = hass
+        """Initialize the token view."""
+
+    async def post(self, request):
+        """Update state of entity."""
+        try:
+            data = await request.text()
+            _LOGGER.debug('[http] raw message: %s', data)
+            platform = aihome_util.findPlatformInCommand(data)
+            auth_value = aihome_util.findTokenInCommand(data)
+            if auth_value:
+                try:
+                    unverif_claims = jwt.decode(auth_value, verify=False)
+                    refresh_token = await self._hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
+                    if refresh_token and refresh_token.id not in CACHED_TOKEN:
+                        for user in self._hass.auth._store._users.values():
+                            if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != EXPIRATION.get(CONF_HTTP):
+                                _LOGGER.debug('[http] set new expiration time for access_token[%s]', refresh_token.id)
+                                refresh_token.access_token_expiration = EXPIRATION.get(CONF_HTTP)
+                                user.refresh_tokens[refresh_token.id] = refresh_token
+                                self._hass.auth._store._async_schedule_save()
+                                CACHED_TOKEN.append(refresh_token.id)
+                                break
+                except jwt.InvalidTokenError:
+                    _LOGGER.debug('[http] request from %s has a invalid token, try another reauthorization on website.', platform)
+            token = await self._hass.auth.async_validate_access_token(auth_value)
+            response = await HANDLER[platform].handleRequest(json.loads(data), token)
+        except:
+            import traceback
+            _LOGGER.error('[http] handle fail: %s', traceback.format_exc())
+            response = {}
+        return self.json(response)

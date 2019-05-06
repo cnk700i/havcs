@@ -4,6 +4,7 @@ from base64 import b64encode
 import homeassistant.util.color as color_util
 import time
 import logging
+import re
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
@@ -35,6 +36,7 @@ AIHOME_ACTIONS_ALIAS = {
 bindManager = None
 ENTITY_KEY = ''
 CONTEXT_AIHOME = None
+EXPIRATION = {}
 class AESCipher:
     """
     Tested under Python 3.x and PyCrypto 2.6.1.
@@ -157,11 +159,11 @@ class BindManager:
         self.update_lists(new_devices, platform)
         uid = p_user_id+'@'+platform
         if self.check_discovery(uid) and not force_save:
-            _LOGGER.debug('用户(%s)已执行discovery', uid)
+            # _LOGGER.debug('用户(%s)已执行discovery', uid)
             bind_entity_ids = []
             unbind_entity_ids = []
         else:
-            _LOGGER.debug('用户(%s)启动首次执行discovery', uid)
+            # _LOGGER.debug('用户(%s)启动首次执行discovery', uid)
             self.add_discovery(uid)
             bind_entity_ids = self.get_bind_entity_ids(platform = platform,p_user_id =p_user_id, repeat_upload = False)
             unbind_entity_ids = self.get_unbind_entity_ids(platform = platform,p_user_id=p_user_id)
@@ -224,3 +226,18 @@ def hsv2rgb(hsvColorDic):
 def timestamp2Delay(timestamp):
     delay = abs(int(time.time()) - timestamp)
     return delay
+
+def findPlatformInCommand(command):
+    if 'AliGenie' in command:
+        platform = 'aligenie'
+    elif 'DuerOS' in command:
+        platform = 'dueros'
+    elif 'Alpha' in command:
+        platform = 'jdwhale'
+    else:
+        platform = 'unknown'
+    return platform
+
+def findTokenInCommand(command):
+    result = re.search(r'(?:accessToken|token)[\'\"\s:]+(.*?)[\'\"\s]+,', command, re.M|re.I)
+    return result.group(1) if result else None
