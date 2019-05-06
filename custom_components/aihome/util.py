@@ -239,5 +239,5 @@ def findPlatformInCommand(command):
     return platform
 
 def findTokenInCommand(command):
-    result = re.search(r'(?:accessToken|token)[\'\"\s:]+(.*?)[\'\"\s]+,', command, re.M|re.I)
+    result = re.search(r'(?:accessToken|token)[\'\"\s:]+(.*?)[\'\"\s]+(,|\})', command, re.M|re.I)
     return result.group(1) if result else None
