@@ -35,14 +35,16 @@ import asyncio
 import async_timeout
 import aiohttp
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import re
+from aiohttp import web
 
+from urllib import parse
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
 DOMAIN = 'aihome'
 HANDLER = {}
-EXPIRATION = {}
-CACHED_TOKEN = []
+EXPIRATION = None
 MODE = []
 
 DATA_AIHOME_CONFIG = 'aihome_config'
@@ -114,8 +116,7 @@ HTTP_SCHEMA = vol.Schema({
 
 HTTP_PROXY = vol.Schema({
     vol.Optional(CONF_HA_URL): cv.string,
-    vol.Optional(CONF_ALLOWED_URI, default=DEFAULT_ALLOWED_URI): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string]),
-    vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
+    vol.Optional(CONF_ALLOWED_URI, default=DEFAULT_ALLOWED_URI): vol.All(cv.ensure_list, vol.Length(min=0), [cv.string])
 })
 
 SKILL_SCHEMA = vol.Schema({
@@ -154,13 +155,14 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
         if conf.get(CONF_HTTP) is None:
             conf[CONF_HTTP] = HTTP_SCHEMA({})
         hass.http.register_view(AihomeGateView(hass))
-        EXPIRATION[CONF_HTTP] = timedelta(hours=conf.get(CONF_HTTP).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
+        hass.http.register_view(AihomeAuthView(hass, hass.config.api.base_url))
+        global EXPIRATION
+        EXPIRATION = timedelta(hours=conf.get(CONF_HTTP).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
         _LOGGER.info('[init] aihome run with "http mode"(mode 1)')
         MODE.append('http')
     if CONF_HTTP_PROXY in conf:
         if conf.get(CONF_HTTP_PROXY) is None:
             conf[CONF_HTTP_PROXY] = HTTP_PROXY({})
-        EXPIRATION[CONF_HTTP_PROXY] = timedelta(hours=conf.get(CONF_HTTP_PROXY).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
         _LOGGER.info('[init] aihome run with "http_proxy mode"(mode 2)')
         if CONF_SETTING not in conf:
             _LOGGER.error('[init] fail to start aihome: http_proxy mode require mqtt congfiguration')
@@ -368,24 +370,11 @@ async def async_setup_entry(hass, entry):
         url = ha_url + resData['uri']
         _LOGGER.debug('[http_proxy] request: url = %s', url)
         if('content' in resData):
-            # _LOGGER.debug('[http_proxy] use POST method')
-            platform = resData.get('platform', aihome_util.findPlatformInCommand(resData['content']))
+            _LOGGER.debug('[http_proxy] use POST method')
+            platform = resData.get('platform', aihome_util.get_platform_from_command(resData['content']))
             auth_type, auth_value = resData.get('headers', {}).get('Authorization',' ').split(' ', 1)
-            try:
-                unverif_claims = jwt.decode(auth_value, verify=False)
-                refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
-                if refresh_token and refresh_token.id not in CACHED_TOKEN:
-                    for user in hass.auth._store._users.values():
-                        if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != EXPIRATION.get(CONF_HTTP_PROXY):
-                            _LOGGER.debug('[http_proxy] set new expiration time for access_token[%s]', refresh_token.id)
-                            refresh_token.access_token_expiration = EXPIRATION.get(CONF_HTTP_PROXY)
-                            user.refresh_tokens[refresh_token.id] = refresh_token
-                            hass.auth._store._async_schedule_save()
-                            CACHED_TOKEN.append(refresh_token.id)
-                            break
-            except jwt.InvalidTokenError:
-                _LOGGER.debug('[http_proxy] request from %s(%s) has a invalid token, try another reauthorization on website.', platform, url)
- 
+            _LOGGER.debug('[http_proxy] access_token = %s', auth_value)
+
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
                 with async_timeout.timeout(5, loop=hass.loop):
@@ -394,7 +383,7 @@ async def async_setup_entry(hass, entry):
                 _LOGGER.error("[http_proxy] fail to access %s in local network: timeout", url)
 
         else:
-            # _LOGGER.debug('[http_proxy] use GET method')
+            _LOGGER.debug('[http_proxy] use GET method')
             try:
                 session = async_get_clientsession(hass, verify_ssl=False)
                 with async_timeout.timeout(5, loop=hass.loop):
@@ -431,7 +420,7 @@ async def async_setup_entry(hass, entry):
         await hass.data[DATA_AIHOME_MQTT].async_publish(topic.replace('/request/','/response/'), res, 2, False)
 
     async def async_module_handler(resData, topic):
-        platform = resData.get('platform', aihome_util.findPlatformInCommand(resData['content']))
+        platform = resData.get('platform', aihome_util.get_platform_from_command(resData['content']))
         if platform == 'unknown':
             _LOGGER.error('[skill] receive command from unsupport platform "%s".', platform)
             return
@@ -500,7 +489,7 @@ async def async_setup_entry(hass, entry):
                     return 
                 hass.add_job(async_module_handler(req, topic))
 
-        except (JSONDecodeError,UnicodeDecodeError,binascii.Error):
+        except (JSONDecodeError, UnicodeDecodeError, binascii.Error):
             import sys
             ex_type, ex_val, ex_stack = sys.exc_info()
             log = ''
@@ -527,23 +516,9 @@ class AihomeGateView(HomeAssistantView):
         try:
             data = await request.text()
             _LOGGER.debug('[http] raw message: %s', data)
-            platform = aihome_util.findPlatformInCommand(data)
-            auth_value = aihome_util.findTokenInCommand(data)
-            if auth_value:
-                try:
-                    unverif_claims = jwt.decode(auth_value, verify=False)
-                    refresh_token = await self._hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
-                    if refresh_token and refresh_token.id not in CACHED_TOKEN:
-                        for user in self._hass.auth._store._users.values():
-                            if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != EXPIRATION.get(CONF_HTTP):
-                                _LOGGER.debug('[http] set new expiration time for access_token[%s]', refresh_token.id)
-                                refresh_token.access_token_expiration = EXPIRATION.get(CONF_HTTP)
-                                user.refresh_tokens[refresh_token.id] = refresh_token
-                                self._hass.auth._store._async_schedule_save()
-                                CACHED_TOKEN.append(refresh_token.id)
-                                break
-                except jwt.InvalidTokenError:
-                    _LOGGER.debug('[http] request from %s has a invalid token, try another reauthorization on website.', platform)
+            platform = aihome_util.get_platform_from_command(data)
+            auth_value = aihome_util.get_token_from_command(data)
+            _LOGGER.debug('[http] access_token = %s', auth_value)
             token = await self._hass.auth.async_validate_access_token(auth_value)
             response = await HANDLER[platform].handleRequest(json.loads(data), token)
         except:
@@ -551,3 +526,47 @@ class AihomeGateView(HomeAssistantView):
             _LOGGER.error('[http] handle fail: %s', traceback.format_exc())
             response = {}
         return self.json(response)
+
+class AihomeAuthView(HomeAssistantView):
+    """View to handle Configuration requests."""
+
+    url = '/aihome_auth'
+    name = 'aihome_auth'
+    requires_auth = False
+
+    def __init__(self, hass, ha_url):
+        self._hass = hass
+        self._aihome_auth_url = ha_url + '/aihome_auth'
+        self._token_url = ha_url + '/auth/token'
+        self._client_id = ha_url
+
+    async def post(self, request):
+        headers = request.headers
+        # _LOGGER.debug('[auth] request headers : %s', headers)
+        body_data = await request.text()
+        _LOGGER.debug('[auth] request data : %s', body_data)
+        try:
+            data = json.loads(body_data)
+        except JSONDecodeError:
+            query_string = body_data if body_data else request.query_string
+            _LOGGER.debug('[auth] request query : %s', query_string)
+            data = { k:v[0] for k, v in parse.parse_qs(query_string).items() }             
+
+        # self._platform_uri = data.get('redirect_uri')
+        # data['redirect_uri'] = self._aihome_auth_url
+        # _LOGGER.debug('[auth] forward request: %s', data)
+
+        try:
+            session = async_get_clientsession(self._hass, verify_ssl=False)
+            with async_timeout.timeout(5, loop=self._hass.loop):
+                response = await session.post(self._token_url, data=data)
+        except(asyncio.TimeoutError, aiohttp.ClientError):
+            _LOGGER.error("[auth] fail to access %s in local network: timeout", url)
+        result = await response.json()
+        result['expires_in'] = EXPIRATION.total_seconds()
+        _LOGGER.debug('[auth] get token[%s] for platform.', result)
+        access_token = result.get('access_token')
+        await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION) 
+        # return web.Response( headers={'Location': self._auth_url+'?'+query_string}, status=303)
+
+        return self.json(result)
