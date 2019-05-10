@@ -538,7 +538,7 @@ class AihomeAuthView(HomeAssistantView):
     def __init__(self, hass, ha_url):
         self._hass = hass
         self._aihome_auth_url = ha_url + '/aihome_auth'
-        self._token_url = ha_url + '/auth/token1'
+        self._token_url = ha_url + '/auth/token'
         self._client_id = ha_url
 
     async def post(self, request):
