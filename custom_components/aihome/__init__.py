@@ -88,7 +88,7 @@ DEFAULT_QOS = 0
 DEFAULT_PROTOCOL = PROTOCOL_311
 DEFAULT_TLS_PROTOCOL = 'auto'
 DEFAULT_EXPIRE_IN_HOURS = 24
-DEFAULT_ALLOWED_URI = ['/aihome_service', '/aihome_auth']
+DEFAULT_ALLOWED_URI = ['/auth/token', '/aihome_service']
 
 CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQTT broker configuration'
 
@@ -562,11 +562,16 @@ class AihomeAuthView(HomeAssistantView):
                 response = await session.post(self._token_url, data=data)
         except(asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error("[auth] fail to access %s in local network: timeout", url)
-        result = await response.json()
-        result['expires_in'] = EXPIRATION.total_seconds()
-        _LOGGER.debug('[auth] get token[%s] for platform.', result)
-        access_token = result.get('access_token')
-        await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION) 
+        try:
+            result = await response.json()
+            result['expires_in'] = EXPIRATION.total_seconds()
+            _LOGGER.debug('[auth] get token[%s] for platform.', result)
+            access_token = result.get('access_token')
+            await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION) 
+            return self.json(result)
+        except:
+            result = await response.text()
+            _LOGGER.error("[auth] fail to get %s in local network, get response = %s", self._token_url, result)
+            return web.Response(status=404)
         # return web.Response( headers={'Location': self._auth_url+'?'+query_string}, status=303)
-
-        return self.json(result)
+        
