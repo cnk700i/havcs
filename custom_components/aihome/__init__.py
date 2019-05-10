@@ -111,6 +111,7 @@ SETTING_SCHEMA = vol.Schema({
 })
 
 HTTP_SCHEMA = vol.Schema({
+    vol.Optional(CONF_HA_URL): cv.string,
     vol.Optional(CONF_EXPIRE_IN_HOURS, default=DEFAULT_EXPIRE_IN_HOURS): cv.positive_int
 })
 
@@ -155,7 +156,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
         if conf.get(CONF_HTTP) is None:
             conf[CONF_HTTP] = HTTP_SCHEMA({})
         hass.http.register_view(AihomeGateView(hass))
-        hass.http.register_view(AihomeAuthView(hass, hass.config.api.base_url))
+        hass.http.register_view(AihomeAuthView(hass, conf.get(CONF_HTTP, {}).get(CONF_HA_URL, hass.config.api.base_url)))
         global EXPIRATION
         EXPIRATION = timedelta(hours=conf.get(CONF_HTTP).get(CONF_EXPIRE_IN_HOURS, DEFAULT_EXPIRE_IN_HOURS))
         _LOGGER.info('[init] aihome run with "http mode"(mode 1)')
@@ -537,7 +538,7 @@ class AihomeAuthView(HomeAssistantView):
     def __init__(self, hass, ha_url):
         self._hass = hass
         self._aihome_auth_url = ha_url + '/aihome_auth'
-        self._token_url = ha_url + '/auth/token'
+        self._token_url = ha_url + '/auth/token1'
         self._client_id = ha_url
 
     async def post(self, request):
@@ -571,7 +572,7 @@ class AihomeAuthView(HomeAssistantView):
             return self.json(result)
         except:
             result = await response.text()
-            _LOGGER.error("[auth] fail to get %s in local network, get response = %s", self._token_url, result)
+            _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
             return web.Response(status=404)
         # return web.Response( headers={'Location': self._auth_url+'?'+query_string}, status=303)
         
