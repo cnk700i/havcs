@@ -557,43 +557,54 @@ class AihomeAuthView(HomeAssistantView):
 
         # self._platform_uri = data.get('redirect_uri')
         # data['redirect_uri'] = self._aihome_auth_url
-        _LOGGER.debug('[auth] forward request: %s', data)
-
+        _LOGGER.debug('[auth] forward request: data = %s', data)
+        grant_type = data.get('grant_type')
         try:
             session = async_get_clientsession(self._hass, verify_ssl=False)
             with async_timeout.timeout(5, loop=self._hass.loop):
                 response = await session.post(self._token_url, data=data)
         except(asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error("[auth] fail to get token, access %s in local network: timeout", url)
-        try:
-            result = await response.json()
-            result['expires_in'] = int(EXPIRATION.total_seconds())
-            _LOGGER.debug('[auth] get token[%s] with default expiration.', result.get('access_token'))
-            access_token = result.get('access_token')
-            await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION)
 
+        if grant_type == 'authorization_code':
             try:
-                refresh_token_data = {'client_id': data.get('client_id'), 'grant_type': 'refresh_token', 'refresh_token': result.get('refresh_token')}
-                session = async_get_clientsession(self._hass, verify_ssl=False)
-                with async_timeout.timeout(5, loop=self._hass.loop):
-                    response = await session.post(self._token_url, data=refresh_token_data)
-            except(asyncio.TimeoutError, aiohttp.ClientError):
-                _LOGGER.error("[auth] fail to refresh token, access %s in local network: timeout", url)
-                return web.Response(status=404)
-            
-            try:
-                refresh_token_result = await response.json()
-                _LOGGER.debug('[auth] get new token[%s] with new expiration.', refresh_token_result.get('access_token'))
-                result['access_token'] = refresh_token_result.get('access_token')
-                _LOGGER.debug('[auth] return token for platform', result)
-                return self.json(result)
+                result = await response.json()
+                result['expires_in'] = int(EXPIRATION.total_seconds())
+                _LOGGER.debug('[auth] get access token[%s] with default expiration, try to update expiration param and get new access token through another refresh token request.', result.get('access_token'))
+                access_token = result.get('access_token')
+                await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION)
+
+                try:
+                    refresh_token_data = {'client_id': data.get('client_id'), 'grant_type': 'refresh_token', 'refresh_token': result.get('refresh_token')}
+                    session = async_get_clientsession(self._hass, verify_ssl=False)
+                    with async_timeout.timeout(5, loop=self._hass.loop):
+                        response = await session.post(self._token_url, data=refresh_token_data)
+                except(asyncio.TimeoutError, aiohttp.ClientError):
+                    _LOGGER.error("[auth] fail to get new access token, access %s in local network: timeout", url)
+                    return web.Response(status=response.status)
+                
+                try:
+                    refresh_token_result = await response.json()
+                    _LOGGER.debug('[auth] get new access token[%s] with new expiration.', refresh_token_result.get('access_token'))
+                    result['access_token'] = refresh_token_result.get('access_token')
+                    _LOGGER.debug('[auth] success to deal %s request, return access token.', grant_type)
+                    return self.json(result)
+                except:
+                    result = await response.text()
+                    _LOGGER.error("[auth] fail to get new access token, access %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
+                    return web.Response(status=response.status)
             except:
                 result = await response.text()
                 _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
-                return web.Response(status=404)
-        except:
-            result = await response.text()
-            _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
-            return web.Response(status=404)
+                return web.Response(status=response.status)
+        else:
+            try:
+                result = await response.json()
+                _LOGGER.error("[auth] success to deal %s request, get response: status = %s, data = %s", grant_type, response.status, result)
+                return self.json(result)
+            except:
+                result = await response.text()
+                _LOGGER.error("[auth] fail to deal %s request, get response: status = %s, data = %s", grant_type, response.status, result)
+                return web.Response(status=response.status)
         # return web.Response( headers={'Location': self._auth_url+'?'+query_string}, status=303)
         
