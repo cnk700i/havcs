@@ -188,6 +188,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     for p in platform:
         try:
             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
+            _LOGGER.error('[init] import %s.%s', DOMAIN, p)
             HANDLER[p] = module.createHandler(hass)
         except ImportError:
             _LOGGER.error('[init] Unable to import %s.%s', DOMAIN, p)
@@ -519,9 +520,10 @@ class AihomeGateView(HomeAssistantView):
             _LOGGER.debug('[http] raw message: %s', data)
             platform = aihome_util.get_platform_from_command(data)
             auth_value = aihome_util.get_token_from_command(data)
-            _LOGGER.debug('[http] access_token = %s', auth_value)
-            token = await self._hass.auth.async_validate_access_token(auth_value)
-            response = await HANDLER[platform].handleRequest(json.loads(data), token)
+            _LOGGER.debug('[http] get access_token[%s]', auth_value)
+            refresh_token = await self._hass.auth.async_validate_access_token(auth_value)
+            _LOGGER.debug('[http] validate access_token, get refresh_token(id = %s)', refresh_token.id)
+            response = await HANDLER[platform].handleRequest(json.loads(data), refresh_token)
         except:
             import traceback
             _LOGGER.error('[http] handle fail: %s', traceback.format_exc())
@@ -555,21 +557,40 @@ class AihomeAuthView(HomeAssistantView):
 
         # self._platform_uri = data.get('redirect_uri')
         # data['redirect_uri'] = self._aihome_auth_url
-        # _LOGGER.debug('[auth] forward request: %s', data)
+        _LOGGER.debug('[auth] forward request: %s', data)
 
         try:
             session = async_get_clientsession(self._hass, verify_ssl=False)
             with async_timeout.timeout(5, loop=self._hass.loop):
                 response = await session.post(self._token_url, data=data)
         except(asyncio.TimeoutError, aiohttp.ClientError):
-            _LOGGER.error("[auth] fail to access %s in local network: timeout", url)
+            _LOGGER.error("[auth] fail to get token, access %s in local network: timeout", url)
         try:
             result = await response.json()
             result['expires_in'] = int(EXPIRATION.total_seconds())
-            _LOGGER.debug('[auth] get token[%s] for platform.', result)
+            _LOGGER.debug('[auth] get token[%s] with default expiration.', result.get('access_token'))
             access_token = result.get('access_token')
-            await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION) 
-            return self.json(result)
+            await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION)
+
+            try:
+                refresh_token_data = {'client_id': data.get('client_id'), 'grant_type': 'refresh_token', 'refresh_token': result.get('refresh_token')}
+                session = async_get_clientsession(self._hass, verify_ssl=False)
+                with async_timeout.timeout(5, loop=self._hass.loop):
+                    response = await session.post(self._token_url, data=refresh_token_data)
+            except(asyncio.TimeoutError, aiohttp.ClientError):
+                _LOGGER.error("[auth] fail to refresh token, access %s in local network: timeout", url)
+                return web.Response(status=404)
+            
+            try:
+                refresh_token_result = await response.json()
+                _LOGGER.debug('[auth] get new token[%s] with new expiration.', refresh_token_result.get('access_token'))
+                result['access_token'] = refresh_token_result.get('access_token')
+                _LOGGER.debug('[auth] return token for platform', result)
+                return self.json(result)
+            except:
+                result = await response.text()
+                _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
+                return web.Response(status=404)
         except:
             result = await response.text()
             _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
