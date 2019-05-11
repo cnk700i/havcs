@@ -565,7 +565,7 @@ class AihomeAuthView(HomeAssistantView):
             _LOGGER.error("[auth] fail to access %s in local network: timeout", url)
         try:
             result = await response.json()
-            result['expires_in'] = EXPIRATION.total_seconds()
+            result['expires_in'] = int(EXPIRATION.total_seconds())
             _LOGGER.debug('[auth] get token[%s] for platform.', result)
             access_token = result.get('access_token')
             await aihome_util.async_update_token_expiration(access_token, self._hass, EXPIRATION) 
