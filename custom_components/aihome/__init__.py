@@ -188,7 +188,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     for p in platform:
         try:
             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
-            _LOGGER.error('[init] import %s.%s', DOMAIN, p)
+            _LOGGER.info('[init] import %s.%s', DOMAIN, p)
             HANDLER[p] = module.createHandler(hass)
         except ImportError:
             _LOGGER.error('[init] Unable to import %s.%s', DOMAIN, p)
