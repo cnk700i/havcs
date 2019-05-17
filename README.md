@@ -2,7 +2,7 @@
 - 请仔细阅读[介绍及使用说明](https://ljr.im/articles/plugin-smart-speaker-access-home-assistant-integration/)
 - 注意检查HA日志插件是否成功启动
 - 使用过程中有疑问请加QQ群307773400交流。
-- 本分支为最新的开发版本，旧版本到[releases页面下载](https://github.com/cnk700i/aihome/releases)
+- 本分支为最新的开发版本，旧版本到[releases页面](https://github.com/cnk700i/aihome/releases)下载
 
 # 更新日志
 - 2019-05-10
