@@ -28,8 +28,8 @@ AIHOME_ACTIONS_ALIAS = {
         'decrease_brightness': 'decrementBrightnessPercentage'
     },
     'dueros':{
-        'turn_on': 'TurnOn',
-        'turn_off': 'TurnOff',
+        'turn_on': 'turnOn',
+        'turn_off': 'turnOff',
         'increase_brightness': 'AdjustUpBrightness',
         'decrease_brightness': 'AdjustDownBrightness'
     }
