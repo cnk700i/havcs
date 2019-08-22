@@ -31,7 +31,9 @@ AIHOME_ACTIONS_ALIAS = {
         'turn_on': 'turnOn',
         'turn_off': 'turnOff',
         'increase_brightness': 'AdjustUpBrightness',
-        'decrease_brightness': 'AdjustDownBrightness'
+        'decrease_brightness': 'AdjustDownBrightness',
+        'timing_turn_on': 'timingTurnOn',
+        'timing_turn_off': 'timingTurnOff'
     }
 }
 

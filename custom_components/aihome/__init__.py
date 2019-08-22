@@ -1,7 +1,7 @@
 """
 author: cnk700i
 blog: ljr.im
-tested On HA version: 0.97.2
+tested simplely On HA version: 0.97.2
 """
 import homeassistant.util as hass_util
 from . import util as aihome_util
