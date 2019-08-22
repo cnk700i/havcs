@@ -5,6 +5,8 @@
 - 本分支为最新的开发版本，旧版本到[releases页面](https://github.com/cnk700i/aihome/releases)下载
 
 # 更新日志
+- 2019-08-23
+  1. 修复一些小度音箱定时控制指令功能的bug。
 - 2019-08-20
   1. 小度音箱支持light、switch、inputboolean类型定时打开/关闭指令，需配合common_timer插件使用。
 - 2019-05-10
