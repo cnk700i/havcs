@@ -21,7 +21,7 @@ AIHOME_ACTIONS_ALIAS = {
         'increase_brightness': 'AdjustUpBrightness',
         'decrease_brightness': 'AdjustDownBrightness'
     },
-    'aligene':{
+    'aligenie':{
         'turn_on': 'turnOn',
         'turn_off': 'turnOff',
         'increase_brightness': 'incrementBrightnessPercentage',
