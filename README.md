@@ -53,7 +53,7 @@
 ```yaml
 # {HA配置目录}/configuration.yaml
 logger:
-  default: info
+  default: critical # 默认日志级别，调试完后改回info（预设）
   logs:
     custom_components.aihome: debug
 ```
