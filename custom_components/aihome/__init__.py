@@ -338,7 +338,7 @@ async def async_setup_entry(hass, entry):
         async def async_report_device(event):
             """report device state when changed. """
             entity = hass.states.get(event.data[ATTR_ENTITY_ID])
-            if entity and not entity.attributes.get('aihome_device', False):
+            if entity is None or not entity.attributes.get('aihome_device', False):
                 return
             for platform, handler in HANDLER.items():
                 if hasattr(handler, 'report_device'):
