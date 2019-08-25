@@ -88,7 +88,7 @@ DEFAULT_QOS = 0
 DEFAULT_PROTOCOL = PROTOCOL_311
 DEFAULT_TLS_PROTOCOL = 'auto'
 DEFAULT_EXPIRE_IN_HOURS = 24
-DEFAULT_ALLOWED_URI = ['/auth/token', '/aihome_service']
+DEFAULT_ALLOWED_URI = ['/aihome_auth', '/aihome_service']
 
 CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQTT broker configuration'
 
