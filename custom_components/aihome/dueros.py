@@ -178,8 +178,8 @@ class Dueros:
                 'DecrementBrightnessPercentageRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['decrease_brightness']]) if state.attributes.get('aihome_actions') else (['input_boolean'], ['turn_on'], [{}]),
                 'IncrementBrightnessPercentageRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['increase_brightness']]) if state.attributes.get('aihome_actions') else (['input_boolean'], ['turn_on'], [{}]),
                 'DecrementBrightnessPercentageRequest': lambda state, payload:([cmnd[0] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [cmnd[1] for cmnd in state.attributes['aihome_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in state.attributes['aihome_actions']['decrease_brightness']]) if state.attributes.get('aihome_actions') else (['input_boolean'], ['turn_on'], [{}]),                 
-                'TimingTurnOnRequest': lambda state, payload: (['common_timer'], ['set'], [{'operation': 'aihome_actions_timing_turn_on', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
-                'TimingTurnOffRequest': lambda state, payload: (['common_timer'], ['set'], [{'operation': 'aihome_actions_timing_turn_off', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
+                'TimingTurnOnRequest': lambda state, payload: (['common_timer'], ['set'], [{'operation': 'custom:aihome_actions/timing_turn_on', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
+                'TimingTurnOffRequest': lambda state, payload: (['common_timer'], ['set'], [{'operation': 'custom:aihome_actions/timing_turn_off', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
             }
 
         }
