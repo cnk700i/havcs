@@ -49,11 +49,6 @@
   HA 0.86.4 和 HA 0.82.1，本地单机测试
 
 # 调试
-插件无法工作可设置插件日志debug级别以观察调试消息。
-```yaml
-# {HA配置目录}/configuration.yaml
-logger:
-  default: critical # 默认日志级别，调试完后改回info（预设）
-  logs:
-    custom_components.aihome: debug
-```
+根据[教程][1]查看插件运行日志
+
+[1]: https://ljr.im/articles/home-assistant-novice-question-set/#3-%E8%B0%83%E8%AF%95%E5%8F%8A%E6%9F%A5%E7%9C%8B%E7%A8%8B%E5%BA%8F%E8%BF%90%E8%A1%8C%E6%97%A5%E5%BF%97 "调试及查看程序运行日志"
