@@ -193,7 +193,9 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
         except ImportError:
             _LOGGER.error('[init] Unable to import %s.%s', DOMAIN, p)
             return False
-
+        except:
+            import traceback
+            _LOGGER.error('[init] fail to create %s handler: %s',p , traceback.format_exc())
     return True
 
 async def async_setup_entry(hass, entry):
@@ -303,8 +305,8 @@ async def async_setup_entry(hass, entry):
 
     success = await hass.data[DATA_AIHOME_MQTT].async_connect()  # type: bool
 
-    if not success:
-        _LOGGER.error('[init] can not connect to mqtt server, check mqtt server\'s address and port.')
+    if not success or success != 'connection_success':
+        _LOGGER.error('[init] can not connect to mqtt server (code = %s), check mqtt server\'s address and port.', success)
         return False
 
     async def start_aihome(event: Event):

@@ -27,9 +27,16 @@ def createHandler(hass):
 class Aligenie:
     def __init__(self, hass):
         self._hass = hass
-        self._places  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
-        self._aliases = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
-        self._aliases.append({'key': '电视', 'value': ['电视机']})
+        try:
+            self._places  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
+            self._aliases = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
+            self._aliases.append({'key': '电视', 'value': ['电视机']})
+        except:
+            self._places = None
+            self._aliases = None
+            _LOGGER.info('[aligenie] can get places and aliases data from website, set None.')
+            import traceback
+            _LOGGER.error('[init] fail to create %s handler: %s',p , traceback.format_exc())
         self._DEVICE_TYPES = {
             'television': '电视',
             'light': '灯',
