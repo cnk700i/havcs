@@ -42,3 +42,6 @@
   - 叮咚：重载本地信息会触发上报（bind_device配置为True）。
   - 天猫精灵：在APP中重新绑定触发更新。
   - 小度：执行“发现设备”指令触发更新。
+
+[5]: https://open.bot.tmall.com/oauth/api/aliaslist "天猫精灵设备名称"
+[6]: https://open.bot.tmall.com/oauth/api/placelist "天猫精灵位置"
