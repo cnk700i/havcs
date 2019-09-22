@@ -1,7 +1,9 @@
-自建技能配置参考旧插件
+新版本插件，采用独立文件配置设备信息，不用再重启HA生效。另外插件名称更改为havcs。
 
-- 下载插件：[havcs][3]
-- 前往[页面][4]注册账号，获取AppKey和AppSecret（生成后记得保存）
+## 使用说明
+以APP的技能使用为例
+- 下载havcs插件，放置到HA自定义插件目录，最终路径结构为`{HA配置目录}/custom_components/havcs/__init__.py`
+- 前往[页面][4]注册账号，获取AppKey和AppSecret（先登录再生成，生成后记得保存）
 - 音箱APP->搜索'aihome'技能->关联账号->输入注册的账号信息登录
 - 配置Home Assistant
   ```yaml
@@ -43,5 +45,6 @@
   - 天猫精灵：在APP中重新绑定触发更新。
   - 小度：执行“发现设备”指令触发更新。
 
+[4]: https://ai-home.ljr.im/account/ "智能音箱接入Home Assistant方案"
 [5]: https://open.bot.tmall.com/oauth/api/aliaslist "天猫精灵设备名称"
 [6]: https://open.bot.tmall.com/oauth/api/placelist "天猫精灵位置"
