@@ -1,4 +1,7 @@
-新版本插件，采用独立文件配置设备信息，不用再重启HA生效。另外插件名称更改为havcs。
+## 备注
+- 采用独立文件配置设备信息，不用再重启HA生效。
+- 改动大bug多多。
+- 插件名称更改为havcs。
 
 ## 使用说明
 以APP的技能使用为例
@@ -44,6 +47,11 @@
   - 叮咚：重载本地信息会触发上报（bind_device配置为True）。
   - 天猫精灵：在APP中重新绑定触发更新。
   - 小度：执行“发现设备”指令触发更新。
+
+## 调试
+根据[教程][1]查看插件运行日志
+
+[1]: https://ljr.im/articles/home-assistant-novice-question-set/#3-%E8%B0%83%E8%AF%95%E5%8F%8A%E6%9F%A5%E7%9C%8B%E7%A8%8B%E5%BA%8F%E8%BF%90%E8%A1%8C%E6%97%A5%E5%BF%97 "调试及查看程序运行日志"
 
 [4]: https://ai-home.ljr.im/account/ "智能音箱接入Home Assistant方案"
 [5]: https://open.bot.tmall.com/oauth/api/aliaslist "天猫精灵设备名称"
