@@ -1,9 +1,10 @@
 ## 备注
-- 采用独立文件配置设备信息，不用再重启HA生效。
-- 改动大bug多多。
-- 插件名称更改为havcs。
+- 插件名称更改为havcs，采用独立文件配置设备信息，不用再重启HA生效。
+- 旧插件（aihome）到[release][1]页面下载。
 
 # 更新日志
+- 2019-09-25
+  1. 重构音箱网关代码，改用独立文件配置设备信息
 - 2019-09-17
   1. 修复天猫精灵获取变量信息失败导致初始化失败
 - 2019-08-23
@@ -95,10 +96,10 @@
   - 小度：执行“发现设备”指令触发更新。
 
 ## 调试
-根据[教程][1]查看插件运行日志
+根据[教程][7]查看插件运行日志
 
-[1]: https://ljr.im/articles/home-assistant-novice-question-set/#3-%E8%B0%83%E8%AF%95%E5%8F%8A%E6%9F%A5%E7%9C%8B%E7%A8%8B%E5%BA%8F%E8%BF%90%E8%A1%8C%E6%97%A5%E5%BF%97 "调试及查看程序运行日志"
-
+[1]: https://github.com/cnk700i/havcs/releases "历史版本"
 [4]: https://ai-home.ljr.im/account/ "智能音箱接入Home Assistant方案"
 [5]: https://open.bot.tmall.com/oauth/api/aliaslist "天猫精灵设备名称"
 [6]: https://open.bot.tmall.com/oauth/api/placelist "天猫精灵位置"
+[7]: https://ljr.im/articles/home-assistant-novice-question-set/#3-%E8%B0%83%E8%AF%95%E5%8F%8A%E6%9F%A5%E7%9C%8B%E7%A8%8B%E5%BA%8F%E8%BF%90%E8%A1%8C%E6%97%A5%E5%BF%97 "调试及查看程序运行日志"
