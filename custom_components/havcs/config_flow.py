@@ -8,10 +8,10 @@ from homeassistant import config_entries
 from homeassistant.const import (
     CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_PROTOCOL, CONF_HOST)
 
-from .const import CONF_BROKER, CONF_DISCOVERY, DEFAULT_DISCOVERY
+from .const import CONF_BROKER, CONF_DISCOVERY, DEFAULT_DISCOVERY, INTEGRATION
 
 
-@config_entries.HANDLERS.register('aihome')
+@config_entries.HANDLERS.register(INTEGRATION)
 class FlowHandler(config_entries.ConfigFlow):
     """Handle a config flow."""
 

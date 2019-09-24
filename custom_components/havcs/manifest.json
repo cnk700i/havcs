@@ -1,6 +1,6 @@
 {
-  "domain": "aihome",
-  "name": "AIHome",
+  "domain": "havcs",
+  "name": "Home Assistant Voice Control Skill",
   "documentation": "https://ljr.im",
   "requirements": [
     "paho-mqtt>=1.4.0"
