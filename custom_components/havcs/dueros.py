@@ -114,7 +114,7 @@ class PlatformParameter:
             'SetBrightnessPercentageRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{'brightness_pct': payload['brightness']['value']}]),
             'IncrementBrightnessPercentageRequest': lambda state, attributes, payload: (['light'], ['turn_on'],[ {'brightness_pct': min(state.attributes['brightness'] / 255 * 100 + payload['deltaPercentage']['value'], 100)}]),
             'DecrementBrightnessPercentageRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}]),
-            'SetColorRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]}])
+            'SetColorRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{'hs_color': [float(payload['color']['hue']), float(payload['color']['saturation']) * 100], 'brightness_pct': float(payload['color']['brightness']) * 100}])
         },
         'input_boolean':{
             'TurnOnRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['turn_on']], [cmnd[1] for cmnd in attributes['havcs_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['turn_on']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
