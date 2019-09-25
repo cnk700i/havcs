@@ -126,7 +126,13 @@ class VoiceControlDeviceManager:
         if not self._device_info_cache or init_flag:
             self._device_info_cache.clear()
             for entity_id, attributes in hass.data[INTEGRATION]['devices'].items():
-                if not attributes.get('havcs_enable', True):
+                if 'havcs_visable' not in attributes:
+                    pass
+                elif isinstance(attributes.get('havcs_visable') , str) and self._platform == attributes.get('havcs_visable'):
+                    pass
+                elif isinstance(attributes.get('havcs_visable') , list) and self._platform in attributes.get('havcs_visable'):
+                    pass
+                else:
                     continue
                 self._device_info_cache.update(self.get(entity_id, hass, attributes))
         return list(self._device_info_cache.values())

@@ -274,13 +274,13 @@ async def async_setup_entry(hass, entry):
                         return None
                     for p in platform:
                         devices = HANDLER[p].vcdm.all(hass, True)
-                        _LOGGER.info('[service] ------------%s reload device------------\n%s', p, devices)
+                        _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n%s', p, devices)
                         mind_devices = [device for device in devices if None in device.values() or [] in device.values()]
                         if mind_devices:
-                            _LOGGER.debug('!!!!!!!!incomplete device!!!!!!!!')
+                            _LOGGER.debug('!!!!!!!! 以下设备信息不完整，检查值为None的属性 !!!!!!!!')
                             for mind_device in mind_devices:
                                 _LOGGER.debug('%s', mind_device)
-                        _LOGGER.info('[service] ------------%s reload device------------', p)
+                        _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n', p)
                 else:
                     pass
             hass.services.async_register(DOMAIN, SERVICE_RELOAD, async_handler_service, schema=HAVCS_SERVICE_SCHEMA)
@@ -453,13 +453,13 @@ async def async_setup_entry(hass, entry):
                     return None
                 for p in platform:
                     devices = HANDLER[p].vcdm.all(hass, True)
-                    _LOGGER.info('[service] ------------%s reload device------------\n%s', p, devices)
+                    _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n%s', p, devices)
                     mind_devices = [device for device in devices if None in device.values() or [] in device.values()]
                     if mind_devices:
-                        _LOGGER.debug('!!!!!!!!incomplete device!!!!!!!!')
+                        _LOGGER.debug('!!!!!!!! 以下设备信息不完整，检查值为None的属性 !!!!!!!!')
                         for mind_device in mind_devices:
                             _LOGGER.debug('%s', mind_device)
-                    _LOGGER.info('[service] ------------%s reload device------------', p)
+                    _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n', p)
                 if bind_device:
                     await async_bind_device()
             else:
