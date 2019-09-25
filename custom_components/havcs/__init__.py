@@ -150,7 +150,7 @@ HAVCS_SERVICE_SCHEMA = vol.Schema({
 
 async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
 
-    conf = config.get(DOMAIN, {})  # type: ConfigType
+    conf = config.get(DOMAIN)  # type: ConfigType
  
     if conf is None:
         # If we have a config entry, setup is done by that config entry.
@@ -197,22 +197,23 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     havcs_util.ENTITY_KEY = conf.get(CONF_SETTING, {}).get(CONF_ENTITY_KEY)
     havcs_util.CONTEXT_HAVCS = Context(conf.get(CONF_SETTING, {}).get(CONF_USER_ID))
 
-    platform = conf[CONF_PLATFORM]
-    manager = hass.data[DATA_HAVCS_BIND_MANAGER] = BindManager(hass,platform)
-    await manager.async_load()
+    platform = conf.get(CONF_PLATFORM)
+    if platform:
+        manager = hass.data[DATA_HAVCS_BIND_MANAGER] = BindManager(hass,platform)
+        await manager.async_load()
 
-    for p in platform:
-        try:
-            module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
-            _LOGGER.info('[init] import %s.%s', DOMAIN, p)
-            HANDLER[p] = module.createHandler(hass)
-        except ImportError as err:
-            _LOGGER.error('[init] Unable to import %s.%s, %s', DOMAIN, p, err)
-            return False
-        except:
-            import traceback
-            _LOGGER.error('[init] fail to create %s handler: %s',p , traceback.format_exc())
-            return False
+        for p in platform:
+            try:
+                module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,p))
+                _LOGGER.info('[init] import %s.%s', DOMAIN, p)
+                HANDLER[p] = module.createHandler(hass)
+            except ImportError as err:
+                _LOGGER.error('[init] Unable to import %s.%s, %s', DOMAIN, p, err)
+                return False
+            except:
+                import traceback
+                _LOGGER.error('[init] fail to create %s handler: %s',p , traceback.format_exc())
+                return False
     return True
 
 async def async_setup_entry(hass, entry):
