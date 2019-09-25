@@ -6,6 +6,7 @@
 - 2019-09-25
   1. 重构音箱网关代码，改用独立文件配置设备信息
   2. 修复取消配置后不能正常清除config entry信息的问题
+  3. 调整设备信息属性havcs_enable为havcs_visable，可以设置该设备只对指定平台可见
 - 2019-09-17
   1. 修复天猫精灵获取变量信息失败导致初始化失败
 - 2019-08-23
@@ -83,7 +84,7 @@
   ```
   属性名 | 描述 | 取值 | 样例 | 备注
   :-: | :-: | :-: | :-: | :-: 
-  havcs_enable | 是否启用设备 | True, False | True |仅值为False禁用，不设置该属性也为启用
+  havcs_visable | 设备可见性 | ['aligenie', 'dueros', 'jdwhale'] | ['aligenie', 'dueros'] | 设置该设备只对指定平台可见，如不设置，对所有平台可见
   havcs_device_name | 设备名称 | [天猫精灵限制][5] | 客厅灯 | 建议“房间”+“设备类型”可以兼容三个平台使用
   havcs_zone | 设备位置| [天猫精灵限制][6] | 客厅 | 仅天猫精灵使用，其它可不用指定
   havcs_device_type | 设备类型 | light, switch, sensor, input_boolean | light | 一般不用指定
