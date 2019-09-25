@@ -645,12 +645,13 @@ class HavcsGateView(HomeAssistantView):
             _LOGGER.debug('[http] raw message: %s', data)
             platform = havcs_util.get_platform_from_command(data)
             auth_value = havcs_util.get_token_from_command(data)
-            _LOGGER.debug('[http] get access_token[%s]', auth_value)
+            _LOGGER.debug('[http] get access_token >>> %s <<<', auth_value)
             refresh_token = await self._hass.auth.async_validate_access_token(auth_value)
             if refresh_token:
                 _LOGGER.debug('[http] validate access_token, get refresh_token(id = %s)', refresh_token.id)
             else:
                 _LOGGER.debug('[http] validate access_token, get None')
+                _LOGGER.debug('[http] !!! token校验失败，请检查授权 !!!')
             response = await HANDLER[platform].handleRequest(json.loads(data), refresh_token)
         except:
             import traceback

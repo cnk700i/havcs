@@ -301,9 +301,9 @@ class VoiceControlDeviceManager:
         return formatted_property
 
     def get_device_actions(self, entity_id, attributes) -> list:
-        if 'havcs_action' in attributes:
+        if 'havcs_actions' in attributes:
             # actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['havcs_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
-            action = attributes['havcs_action']
+            action = attributes['havcs_actions']
         elif entity_id.startswith('switch.'):
             action = ["turn_on", "turn_off", "timing_turn_on", "timing_turn_off"]
         elif entity_id.startswith('light.'):

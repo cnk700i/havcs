@@ -30,12 +30,27 @@ class PlatformParameter:
     device_action_map_h2p ={
         'turn_on': 'turnOn',
         'turn_off': 'turnOff',
-        'increase_brightness': 'AdjustUpBrightness',
-        'decrease_brightness': 'AdjustDownBrightness',
         'timing_turn_on': 'timingTurnOn',
         'timing_turn_off': 'timingTurnOff',
+        'increase_brightness': 'incrementBrightnessPercentage',
+        'decrease_brightness': 'decrementBrightnessPercentage',
+        'set_brightness': 'setBrightnessPercentage',
+        'increase_temperature': 'incrementTemperature',
+        'decrease_temperature': 'decrementTemperature',
+        'set_temperature': 'setTemperature',
+        'set_color': 'setColor',
+        'pause': 'pause',
+        # 'query_color': 'QueryColor',
+        'query_power_state': 'getTurnOnState',
         'query_temperature': 'getTemperatureReading',
-        'query_humidity': 'getHumidity'
+        'query_humidity': 'getHumidity',
+        # '': 'QueryWindSpeed',
+        # '': 'QueryBrightness',
+        # '': 'QueryFog',
+        # '': 'QueryMode',
+        # '': 'QueryPM25',
+        # '': 'QueryDirection',
+        # '': 'QueryAngle'
     }
     _device_type_alias = {
         'LIGHT': '灯',
@@ -107,7 +122,7 @@ class PlatformParameter:
             'TimingTurnOffRequest': lambda state, attributes, payload: (['common_timer'], ['set'], [{'operation': 'off', 'duration': int(payload['timestamp']['value']) - int(time.time())}])
         },
         'light': {
-            'TurnOnRequest':  'turn_on',
+            'TurnOnRequest': 'turn_on',
             'TurnOffRequest': 'turn_off',
             'TimingTurnOnRequest': lambda state, attributes, payload: (['common_timer'], ['set'], [{'operation': 'on', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
             'TimingTurnOffRequest': lambda state, attributes, payload: (['common_timer'], ['set'], [{'operation': 'off', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
@@ -145,7 +160,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
             'INVALIDATE_PARAMS': 'invalidate params',
             'DEVICE_IS_NOT_EXIST': 'device is not exist',
             'IOT_DEVICE_OFFLINE': 'device is offline',
-            'ACCESS_TOKEN_INVALIDATE': ' access_token is invalidate'
+            'ACCESS_TOKEN_INVALIDATE': 'access_token is invalidate'
         }
         return {'errorCode': errorCode, 'message': messsage if messsage else messages[errorCode]}
 
