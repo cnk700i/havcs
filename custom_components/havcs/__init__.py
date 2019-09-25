@@ -244,12 +244,49 @@ async def async_setup_entry(hass, entry):
         with open(havcd_config_path, "wt") as havcd_config_file:
             havcd_config_file.write('')
 
+    platform = conf[CONF_PLATFORM]
+    
     if CONF_HTTP_PROXY not in conf and CONF_SKILL not in conf:
         _LOGGER.debug('[init] havcs only run in http mode, skip mqtt initialization')
         _LOGGER.info('[init] initialization finished.')
+        async def start_havcs_without_mqtt(event: Event):
+            async def async_load_config():
+                try:
+                    hass.data[DOMAIN]['devices'] = await hass.async_add_executor_job(
+                        conf_util.load_yaml_config_file, havcd_config_path
+                    )
+                except HomeAssistantError as err:
+                    _LOGGER.error("Error loading %s: %s", havcd_config_path, err)
+                    return None
+                for p in platform:
+                    HANDLER[p].vcdm.all(hass, True)
+                _LOGGER.info('[init] load config after startup')
+            await async_load_config()
+            async def async_handler_service(service):
+                
+                if service.service == SERVICE_RELOAD:
+                    try:
+                        hass.data[DOMAIN]['devices'] = await hass.async_add_executor_job(
+                            conf_util.load_yaml_config_file, havcd_config_path
+                        )
+                    except HomeAssistantError as err:
+                        _LOGGER.error("Error loading %s: %s", havcd_config_path, err)
+                        return None
+                    for p in platform:
+                        devices = HANDLER[p].vcdm.all(hass, True)
+                        _LOGGER.info('[service] ------------%s reload device------------\n%s', p, devices)
+                        mind_devices = [device for device in devices if None in device.values() or [] in device.values()]
+                        if mind_devices:
+                            _LOGGER.debug('!!!!!!!!incomplete device!!!!!!!!')
+                            for mind_device in mind_devices:
+                                _LOGGER.debug('%s', mind_device)
+                        _LOGGER.info('[service] ------------%s reload device------------', p)
+                else:
+                    pass
+            hass.services.async_register(DOMAIN, SERVICE_RELOAD, async_handler_service, schema=HAVCS_SERVICE_SCHEMA)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start_havcs_without_mqtt)
         return True
 
-    platform = conf[CONF_PLATFORM]
     setting_conf = conf.get(CONF_SETTING)
     app_key = setting_conf.get(CONF_APP_KEY)
     app_secret = setting_conf.get(CONF_APP_SECRET)
@@ -405,7 +442,7 @@ async def async_setup_entry(hass, entry):
         await hass.data[DATA_HAVCS_MQTT].async_publish("ai-home/http2mqtt2hass/"+app_key+"/response/test", 'init', 2, False)
 
         async def async_handler_service(service):
-            """ Handle calls to the common timer services. """
+            
             if service.service == SERVICE_RELOAD:
                 try:
                     hass.data[DOMAIN]['devices'] = await hass.async_add_executor_job(
@@ -585,6 +622,7 @@ async def async_setup_entry(hass, entry):
 
     await hass.data[DATA_HAVCS_MQTT].async_subscribe("ai-home/http2mqtt2hass/"+app_key+"/request/#", message_received, 2, 'utf-8')
     _LOGGER.info('[init] initialization finished, waiting for welcome message of mqtt server.')
+
     return True
 
 class HavcsGateView(HomeAssistantView):
