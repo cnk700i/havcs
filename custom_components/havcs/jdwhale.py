@@ -92,6 +92,7 @@ class PlatformParameter:
         'cover': {
             'TurnOnRequest':  'open_cover',
             'TurnOffRequest': 'close_cover',
+            'PauseRequest': 'stop_cover',
         },
         'vacuum': {
             'TurnOnRequest':  'start',
@@ -264,7 +265,7 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
     def _discovery_process_device_info(self, entity_id,  device_type, device_name, zone, properties, actions):
         return {
             'actions': actions,
-            'controlSpeech': [self._controlSpeech_template.get(action,'')%(device_name) for action in actions ],
+            'controlSpeech': [self._controlSpeech_template.get(action,'')%(device_name) if '%' in self._controlSpeech_template.get(action,'') else self._controlSpeech_template.get(action,'') for action in actions ],
             'deviceId': encrypt_entity_id(entity_id),
             'deviceTypes': device_type,
             'extensions': {'manufacturerName': 'HomeAssistant'},

@@ -101,11 +101,12 @@ class PlatformParameter:
     _service_map_p2h = {
         'cover': {
             'TurnOn':  'open_cover',
-            'TurnOff': 'close_cover'
+            'TurnOff': 'close_cover',
+            'Pause': 'stop_cover',
         },
         'vacuum': {
             'TurnOn':  'start',
-            'TurnOff': 'return_to_base'
+            'TurnOff': 'return_to_base',
         },
         'light': {
             'TurnOn':  'turn_on',
