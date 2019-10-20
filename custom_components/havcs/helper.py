@@ -143,7 +143,7 @@ class VoiceControlDeviceManager:
         device_type = self.get_device_type(hass, entity_id, attributes)
         device_name = self.get_device_name(hass, entity_id, attributes, self._places, self._device_name_constraints)
         zone = self.get_device_zone(hass, entity_id, attributes, self._places, self._zone_constraints)
-        actions = self.get_device_actions(entity_id, attributes)
+        actions = self.get_device_actions(entity_id, attributes, device_type)
 
         properties =[]
         if entity_id.startswith('sensor.'):
@@ -197,7 +197,7 @@ class VoiceControlDeviceManager:
         # Guess from entity's friendlyname
         state = hass.states.get(entity_id)
         if device_type is None and state:
-            for device_type, alias in self._device_type_alias.values():
+            for device_type, alias in self._device_type_alias.items():
                 if alias in state.attributes.get('friendly_name'):
                     return device_type
 
@@ -300,8 +300,7 @@ class VoiceControlDeviceManager:
                 formatted_property[key] = hass.states.get(entity_id).state
         return formatted_property
 
-    def get_device_actions(self, entity_id, attributes) -> list:
-        device_type = attributes['havcs_device_type']
+    def get_device_actions(self, entity_id, attributes, device_type) -> list:
         if 'havcs_actions' in attributes:
             # actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['havcs_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
             action = attributes['havcs_actions']
