@@ -368,7 +368,9 @@ async def async_setup_entry(hass, entry):
 
     success = await hass.data[DATA_HAVCS_MQTT].async_connect()  # type: bool
 
-    if not success or success != 'connection_success':
+    if success is True or success == 'connection_success':
+        pass
+    else:
         _LOGGER.error('[init] can not connect to mqtt server (code = %s), check mqtt server\'s address and port.', success)
         return False
 
