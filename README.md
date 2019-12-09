@@ -63,5 +63,5 @@
 根据[教程][3]调整插件调试级别查看详细的运行日志
 
 [1]: https://github.com/cnk700i/havcs/releases "历史版本"
-[2]: https://ljr.im/articles/plugin-smart-speaker-access-home-assistant-integration-plus/ "【插件】智能音箱接入Home Assistant整合Plus"
+[2]: https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/ "【插件】智能音箱接入Home Assistant整合Plus"
 [3]: https://ljr.im/articles/home-assistant-novice-question-set/#3-%E8%B0%83%E8%AF%95%E5%8F%8A%E6%9F%A5%E7%9C%8B%E7%A8%8B%E5%BA%8F%E8%BF%90%E8%A1%8C%E6%97%A5%E5%BF%97 "调试及查看程序运行日志"
