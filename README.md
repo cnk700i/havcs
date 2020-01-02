@@ -61,8 +61,14 @@
 - 2019-01-xx
   HA 0.86.4 和 HA 0.82.1，本地单机测试
 
-## 调试
-根据[教程][3]调整插件调试级别查看详细的运行日志
+## 调试Tips
+1. 根据[教程][3]调整插件的调试级别查看详细的运行日志
+2. 配置好插件，启动HA，观看是否有mqtt连接成功信息（app技能接入方式）
+3. 授权过程，观看是否有相关的处理日志
+4. 说音响指令后，观看是否有相关的处理日志
+5. web页面->开发者工具->服务->havcs.reload，观看是否生成设备信息
+> WARN: 如需要帮助，请提供以上步骤相对应的日志信息方便定位原因。
+
 
 [1]: https://github.com/cnk700i/havcs/releases "历史版本"
 [2]: https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/ "【插件】智能音箱接入Home Assistant整合Plus"
