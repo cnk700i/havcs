@@ -731,10 +731,20 @@ class HavcsAuthView(HomeAssistantView):
                 result = await response.text()
                 _LOGGER.error("[auth] fail to get token from %s in local network, get response: status = %s, data = %s", self._token_url, response.status, result)
                 return web.Response(status=response.status)
+        elif grant_type == 'refresh_token':
+            try:
+                result = await response.json()
+                result['refresh_token'] = data.get('refresh_token')
+                _LOGGER.debug("[auth] deal %s request, return refresh_token again: status = %s, data = %s", grant_type, response.status, result)
+                return self.json(result)
+            except:
+                result = await response.text()
+                _LOGGER.error("[auth] fail to deal %s request, get response: status = %s, data = %s", grant_type, response.status, result)
+                return web.Response(status=response.status)        
         else:
             try:
                 result = await response.json()
-                _LOGGER.error("[auth] success to deal %s request, get response: status = %s, data = %s", grant_type, response.status, result)
+                _LOGGER.debug("[auth] success to deal %s request, get response: status = %s, data = %s", grant_type, response.status, result)
                 return self.json(result)
             except:
                 result = await response.text()
