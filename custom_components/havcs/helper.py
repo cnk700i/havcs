@@ -65,6 +65,8 @@ class VoiceControlProcessor:
     async def process_control_command(self, command) -> tuple:
         device_id = self._prase_command(command, 'device_id')
         entity_id = self._decrypt_device_id(device_id)
+        if entity_id is None:
+            return self._errorResult('DEVICE_IS_NOT_EXIST'), None
         action = self._prase_command(command, 'action')
         domain = entity_id[:entity_id.find('.')]
         data = {"entity_id": entity_id }
@@ -102,10 +104,12 @@ class VoiceControlProcessor:
     def process_query_command(self, command) -> tuple:
         device_id = self._prase_command(command, 'device_id')
         entity_id = self._decrypt_device_id(device_id)
+        if entity_id is None:
+            return self._errorResult('DEVICE_IS_NOT_EXIST'), None
         action = self._prase_command(command, 'action')
         device_properties = self.vcdm.get(entity_id).get('properties')
         properties = self._query_process_propertites(device_properties, action)
-        return None if properties else self._errorResult('IOT_DEVICE_OFFLINE'), properties
+        return (None, properties) if properties else (self._errorResult('IOT_DEVICE_OFFLINE'), None)
 
 class VoiceControlDeviceManager:
 
@@ -159,13 +163,13 @@ class VoiceControlDeviceManager:
                 else:
                     pass 
             for sensor in sensor_ids:
-                sensor_properties = self.get_device_properties(sensor, attributes)
+                sensor_properties = self.get_device_properties(hass, sensor, attributes)
                 if sensor_properties :
                     actions += self.get_sensor_actions_from_properties(sensor_properties)
                     properties += sensor_properties
             actions = list(set(actions))
         else:
-            properties = self.get_device_properties(entity_id, attributes)
+            properties = self.get_device_properties(hass, entity_id, attributes)
         device_info = {
             'entity_id': entity_id,
             'device_type': device_type,
@@ -218,6 +222,7 @@ class VoiceControlDeviceManager:
             # Name validation
             for device_name_constraint in device_name_constraints:
                 aliases = [device_name_constraint['key']]+ device_name_constraint['value']
+                aliases.reverse()
                 for alias in aliases:
                     if alias in device_name:
                         return alias
@@ -256,13 +261,17 @@ class VoiceControlDeviceManager:
         else:
             return zone
 
-    def get_device_properties(self, entity_id, attributes) -> list:
+    def get_device_properties(self, hass, entity_id, attributes) -> list:
         properties = []
         if 'havcs_attributes' in attributes:
             for attribute in attributes['havcs_attributes']:
                 properties.append({'entity_id': entity_id, 'attribute': attribute})
         elif entity_id.startswith('sensor.'):
-            unit = attributes.get('unit_of_measurement', '')
+            state = hass.states.get(entity_id)
+            if state is None:
+                _LOGGER.debug('[%s] can not find sensor %s', LOGGER_NAME, entity_id)
+                return []
+            unit = state.attributes.get('unit_of_measurement', '')
             if unit == u'°C' or unit == u'℃':
                 attribute = 'temperature'
             elif unit == 'lx' or unit == 'lm':
