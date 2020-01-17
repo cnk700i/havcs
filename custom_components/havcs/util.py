@@ -14,28 +14,8 @@ _LOGGER = logging.getLogger(__name__)
 LOGGER_NAME = 'util'
 
 
-AIHOME_ACTIONS_ALIAS = {
-    'jdwhale':{
-        'turn_on': 'TurnOn',
-        'turn_off': 'TurnOff',
-        'increase_brightness': 'AdjustUpBrightness',
-        'decrease_brightness': 'AdjustDownBrightness'
-    },
-    'aligenie':{
-        'turn_on': 'turnOn',
-        'turn_off': 'turnOff',
-        'increase_brightness': 'incrementBrightnessPercentage',
-        'decrease_brightness': 'decrementBrightnessPercentage'
-    },
-    'dueros':{
-        'turn_on': 'turnOn',
-        'turn_off': 'turnOff',
-        'increase_brightness': 'AdjustUpBrightness',
-        'decrease_brightness': 'AdjustDownBrightness',
-        'timing_turn_on': 'timingTurnOn',
-        'timing_turn_off': 'timingTurnOff'
-    }
-}
+
+
 
 bindManager = None
 ENTITY_KEY = ''
@@ -70,14 +50,18 @@ class AESCipher:
         return unpad(cipher.decrypt(enc)).decode('utf8')
 
 def decrypt_device_id(device_id):
-    if not ENTITY_KEY:
-        return device_id
-    device_id = device_id.replace('-', '+')
-    device_id = device_id.replace('_', '/')
-    pad4 = '===='
-    device_id += pad4[0:len(device_id) % 4]
-    entity_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
-    return entity_id
+    try:
+        if not ENTITY_KEY:
+            return device_id
+        device_id = device_id.replace('-', '+')
+        device_id = device_id.replace('_', '/')
+        pad4 = '===='
+        device_id += pad4[0:len(device_id) % 4]
+        entity_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
+    except:
+        entity_id=None
+    finally:
+        return entity_id
 def encrypt_entity_id(entity_id):
     if not ENTITY_KEY:
         return entity_id
@@ -121,7 +105,7 @@ async def async_update_token_expiration(access_token, hass, expiration):
         refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
         for user in hass.auth._store._users.values():
             if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != expiration:
-                _LOGGER.debug('[util] set new expiration for refresh_token[%s]', refresh_token.id)
+                _LOGGER.debug('[util] set new access token expiration for refresh_token[%s]', refresh_token.id)
                 refresh_token.access_token_expiration = expiration
                 user.refresh_tokens[refresh_token.id] = refresh_token
                 hass.auth._store._async_schedule_save()

@@ -154,6 +154,15 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
         self.vcdm = VoiceControlDeviceManager(DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias)
     def _errorResult(self, errorCode, messsage=None):
         """Generate error result"""
+        error_code_map = {
+            'INVALIDATE_CONTROL_ORDER': 'invalidate control order',
+            'SERVICE_ERROR': 'TargetConnectivityUnstableError',
+            'DEVICE_NOT_SUPPORT_FUNCTION': 'NotSupportedInCurrentModeError',
+            'INVALIDATE_PARAMS': 'ValueOutOfRangeError',
+            'DEVICE_IS_NOT_EXIST': 'DriverInternalError',
+            'IOT_DEVICE_OFFLINE': 'TargetOfflineError',
+            'ACCESS_TOKEN_INVALIDATE': 'InvalidAccessTokenError'            
+        }
         messages = {
             'INVALIDATE_CONTROL_ORDER': 'invalidate control order',
             'SERVICE_ERROR': 'service error',
@@ -163,7 +172,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
             'IOT_DEVICE_OFFLINE': 'device is offline',
             'ACCESS_TOKEN_INVALIDATE': 'access_token is invalidate'
         }
-        return {'errorCode': errorCode, 'message': messsage if messsage else messages[errorCode]}
+        return {'errorCode': error_code_map.get('errorCode'), 'message': messsage if messsage else messages[errorCode]}
 
     async def handleRequest(self, data, auth = False):
         """Handle request"""
@@ -199,7 +208,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
         # Check error
         header['name'] = action
         if 'errorCode' in result:
-            header['name'] = 'DriverInternalError'
+            header['name'] = result['errorCode']
             result={}
 
         response = {'header': header, 'payload': result}
@@ -253,8 +262,9 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                     legalValue = '(ON, OFF)'
                 properties += [{'name': name, 'value': value, 'scale': scale, 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': legalValue }]
                 
-        return properties if properties else None
-    
+        # return properties if properties else [{'name': 'turnOnState', 'value': 'OFF', 'scale': '', 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': '(ON, OFF)' }]
+        return properties
+        
     def _discovery_process_actions(self, device_properties, raw_actions):
         actions = []
         for device_property in device_properties:

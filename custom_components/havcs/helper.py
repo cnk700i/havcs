@@ -272,17 +272,16 @@ class VoiceControlDeviceManager:
                 _LOGGER.debug('[%s] can not find sensor %s', LOGGER_NAME, entity_id)
                 return []
             unit = state.attributes.get('unit_of_measurement', '')
-            if unit == u'°C' or unit == u'℃':
+            friendly_name = state.attributes.get('friendly_name', '')
+            if unit == u'°C' or unit == u'℃' or 'temperature' in entity_id or '温度' in friendly_name :
                 attribute = 'temperature'
-            elif unit == 'lx' or unit == 'lm':
-                attribute = 'brightness'
-            elif ('temperature' in entity_id):
-                attribute = 'temperature'
-            elif ('humidity' in entity_id):
+            elif unit == 'lx' or unit == 'lm' or 'illumination' in entity_id or '光照' in friendly_name:
+                attribute = 'illumination'
+            elif 'humidity' in entity_id or  '湿度' in friendly_name:
                 attribute = 'humidity'
-            elif ('pm25' in entity_id):
+            elif 'pm25' in entity_id or 'pm2.5' in friendly_name:
                 attribute = 'pm25'
-            elif ('co2' in entity_id):
+            elif 'co2' in entity_id or '二氧化碳' in friendly_name:
                 attribute = 'co2'
             else:
                 attribute = []
@@ -311,7 +310,7 @@ class VoiceControlDeviceManager:
 
     def get_device_actions(self, entity_id, attributes, device_type) -> list:
         if 'havcs_actions' in attributes:
-            # actions = [AIHOME_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['havcs_actions'].keys() if AIHOME_ACTIONS_ALIAS[DOMAIN].get(action)]
+            # actions = [HAVCS_ACTIONS_ALIAS[DOMAIN].get(action) for action in attributes['havcs_actions'].keys() if HAVCS_ACTIONS_ALIAS[DOMAIN].get(action)]
             action = attributes['havcs_actions']
         elif device_type == 'switch':
             action = ["turn_on", "turn_off", "timing_turn_on", "timing_turn_off"]

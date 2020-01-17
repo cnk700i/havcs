@@ -1,7 +1,7 @@
 """
 author: cnk700i
 blog: ljr.im
-tested simplely On HA version: 0.99
+tested simplely On HA version: 0.101
 """
 
 import homeassistant.util as hass_util
@@ -136,7 +136,7 @@ SKILL_SCHEMA = vol.Schema({
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), ['jdwhale', 'aligenie', 'dueros']),
+        vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), ['jdwhale', 'aligenie', 'dueros', 'weixin']),
         vol.Optional(CONF_HTTP): vol.Any(HTTP_SCHEMA, None),
         vol.Optional(CONF_HTTP_PROXY): vol.Any(HTTP_PROXY, None),
         vol.Optional(CONF_SKILL): vol.Any(SKILL_SCHEMA, None),

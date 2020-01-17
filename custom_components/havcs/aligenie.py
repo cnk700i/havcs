@@ -90,6 +90,7 @@ class PlatformParameter:
         'climate': 'aircondition',
         'fan': 'fan',
         'light': 'light',
+        'television': 'television',
         'media_player': 'television',
         'remote': 'telecontroller',
         'switch': 'switch',
@@ -186,7 +187,11 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
             err_result = self._errorResult('ACCESS_TOKEN_INVALIDATE')
 
         # Check error and fill response name
-        header['name'] = ('Error' if err_result else action) + 'Response'
+        if err_result:
+            header['name'] = 'ErrorResponse'
+            content = err_result
+        else:
+            header['name'] = action + 'Response'
 
         # Fill response deviceId
         if 'deviceId' in payload:
@@ -220,7 +225,8 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
             state = self._hass.states.get(device_property.get('entity_id'))
             if name and state:
                 properties += [{'name': name.lower(), 'value': state.state}]
-        return properties if properties else None
+        # return properties if properties else [{'name': 'powerstate', 'value': 'off'}]
+        return properties
     
     def _discovery_process_actions(self, device_properties, raw_actions):
         actions = []
