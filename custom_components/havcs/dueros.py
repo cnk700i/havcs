@@ -78,7 +78,7 @@ class PlatformParameter:
         'RICE_COOKER': '电饭煲',
         'INDUCTION_COOKER': '电磁炉',
         'HIGH_SPEED_BLENDER': '破壁机',
-        'SWEEPING_ROBOT':  '扫地机器人',
+        'SWEEPING_ROBOT': '扫地机器人',
         'FRIDGE': '冰箱',
         'PRINTER': '打印机',
         'AIR_FRESHER': '新风机',
@@ -86,8 +86,13 @@ class PlatformParameter:
         'WEBCAM': '摄像头',
         'ROBOT': '机器人',
         'WINDOW_OPENER': '开窗器',
-        'ACTIVITY_TRIGGER': '特定设备顺序操作组合场景',
-        'SCENE_TRIGGER': '特定设备无顺序操作组合场景',
+        'DISINFECTION_CABINET': '消毒柜',
+        'DISHWASHER': '洗碗机',
+        'ACTIVITY_TRIGGER': '描述特定设备的组合场景',
+        'SCENE_TRIGGER': '描述特定设备的组合场景',
+        'SOFA': '沙发',
+        'BED': '床',
+        'SHOE_CABINET': '鞋柜',
     }
 
     device_type_map_h2p = {

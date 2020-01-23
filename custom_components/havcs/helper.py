@@ -144,8 +144,8 @@ class VoiceControlDeviceManager:
     def get(self, entity_id, hass = None, attributes = None) -> dict:
         if attributes is None:
             return self._device_info_cache.get(entity_id, {})
-        device_type = self.get_device_type(hass, entity_id, attributes)
         device_name = self.get_device_name(hass, entity_id, attributes, self._places, self._device_name_constraints)
+        device_type = self.get_device_type(hass, entity_id, attributes, device_name)
         zone = self.get_device_zone(hass, entity_id, attributes, self._places, self._zone_constraints)
         actions = self.get_device_actions(entity_id, attributes, device_type)
 
@@ -183,13 +183,27 @@ class VoiceControlDeviceManager:
     def get_device_attrs(self, device) -> list:
         return device.get('entity_id'),device.get('device_type'),device.get('device_name'),device.get('zone'),device.get('properties'),device.get('actions')
 
-    def get_device_type(self, hass, entity_id, attributes) -> str:
+    def get_device_type(self, hass, entity_id, attributes, device_name) -> str:
         device_type = None
 
         if 'havcs_device_type' in attributes:
             device_type = self.device_type_map_h2p.get(attributes['havcs_device_type'])
             if device_type:
                 return device_type
+
+        # Guess from havcs_device_name
+        if device_name:
+            for device_type, alias in self._device_type_alias.items():
+                if alias in device_name:
+                    return device_type
+
+        # Guess from entity's friendlyname
+        state = hass.states.get(entity_id)
+        if state:
+            for device_type, alias in self._device_type_alias.items():
+                if alias in state.attributes.get('friendly_name'):
+                    return device_type
+
         # Guess from entity_id
         for device_type in self._device_type_alias.keys():
             if device_type.lower() in entity_id:
@@ -198,18 +212,12 @@ class VoiceControlDeviceManager:
         # Guess from entity_id's domain
         device_type = self.device_type_map_h2p.get(entity_id[:entity_id.find('.')])
 
-        # Guess from entity's friendlyname
-        state = hass.states.get(entity_id)
-        if device_type is None and state:
-            for device_type, alias in self._device_type_alias.items():
-                if alias in state.attributes.get('friendly_name'):
-                    return device_type
-
         return device_type
 
     def get_device_name(self, hass, entity_id, attributes, places = [], device_name_constraints = []) -> str:
         device_name = None
-        
+        probably_device_names = []
+
         if 'havcs_device_name' in attributes:
             device_name = attributes['havcs_device_name']
         else:
@@ -225,8 +233,8 @@ class VoiceControlDeviceManager:
                 aliases.reverse()
                 for alias in aliases:
                     if alias in device_name:
-                        return alias
-            return None
+                        probably_device_names += [alias]
+            return max(probably_device_names) if probably_device_names else None
             
         return device_name
 
