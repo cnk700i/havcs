@@ -52,23 +52,25 @@ class AESCipher:
 def decrypt_device_id(device_id):
     try:
         if not ENTITY_KEY:
-            return device_id
-        device_id = device_id.replace('-', '+')
-        device_id = device_id.replace('_', '/')
-        pad4 = '===='
-        device_id += pad4[0:len(device_id) % 4]
-        entity_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
+            entity_id = device_id
+        else:
+            device_id = device_id.replace('-', '+')
+            device_id = device_id.replace('_', '/')
+            pad4 = '===='
+            device_id += pad4[0:len(device_id) % 4]
+            entity_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
     except:
-        entity_id=None
+        entity_id = None
     finally:
         return entity_id
 def encrypt_entity_id(entity_id):
     if not ENTITY_KEY:
-        return entity_id
-    device_id = AESCipher(ENTITY_KEY.encode('utf-8')).encrypt(entity_id.encode('utf8'))
-    device_id = device_id.replace('+', '-')
-    device_id = device_id.replace('/', '_')
-    device_id = device_id.replace('=', '')
+        device_id = entity_id
+    else:
+        device_id = AESCipher(ENTITY_KEY.encode('utf-8')).encrypt(entity_id.encode('utf8'))
+        device_id = device_id.replace('+', '-')
+        device_id = device_id.replace('/', '_')
+        device_id = device_id.replace('=', '')
     return device_id
 
 def hsv2rgb(hsvColorDic):

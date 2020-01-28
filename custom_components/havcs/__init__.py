@@ -102,7 +102,7 @@ CLIENT_KEY_AUTH_MSG = 'client_key and client_cert must both be present in the MQ
 SERVICE_RELOAD = 'reload'
 
 SETTING_SCHEMA = vol.Schema({
-    vol.Required(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
+    vol.Optional(CONF_ENTITY_KEY):vol.All(cv.string, vol.Length(min=16, max=16)),
     vol.Required(CONF_APP_KEY): cv.string,
     vol.Required(CONF_APP_SECRET): cv.string,
     vol.Optional(CONF_USER_ID): cv.string,
