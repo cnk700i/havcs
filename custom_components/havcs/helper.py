@@ -56,7 +56,7 @@ class VoiceControlProcessor:
             actions = self._discovery_process_actions(device_properties, raw_actions)
             device_type = self._discovery_process_device_type(raw_device_type)
             if None in (device_type, device_name, zone) or [] in (properties, actions):
-                _LOGGER.debug('[%s] can get all info of entity %s, pass. [device_type = %s, device_name = %s, zone = %s, properties = %s, actions = %s]', LOGGER_NAME, entity_id, device_type, device_name, zone, properties, actions)
+                _LOGGER.error('[%s] can get all info of entity %s, pass. [device_type = %s, device_name = %s, zone = %s, properties = %s, actions = %s]', LOGGER_NAME, entity_id, device_type, device_name, zone, properties, actions)
             else:
                 devices.append(self._discovery_process_device_info(entity_id, device_type, device_name, zone, properties, actions))
                 entity_ids.append(entity_id)
