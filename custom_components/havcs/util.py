@@ -13,10 +13,6 @@ _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 LOGGER_NAME = 'util'
 
-
-
-
-
 bindManager = None
 ENTITY_KEY = ''
 CONTEXT_AIHOME = None
@@ -52,26 +48,26 @@ class AESCipher:
 def decrypt_device_id(device_id):
     try:
         if not ENTITY_KEY:
-            entity_id = device_id
+            new_device_id = device_id
         else:
             device_id = device_id.replace('-', '+')
             device_id = device_id.replace('_', '/')
             pad4 = '===='
             device_id += pad4[0:len(device_id) % 4]
-            entity_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
+            new_device_id = AESCipher(ENTITY_KEY.encode('utf-8')).decrypt(device_id)
     except:
-        entity_id = None
+        new_device_id = None
     finally:
-        return entity_id
-def encrypt_entity_id(entity_id):
+        return new_device_id
+def encrypt_device_id(device_id):
     if not ENTITY_KEY:
-        device_id = entity_id
+        new_device_id = device_id
     else:
-        device_id = AESCipher(ENTITY_KEY.encode('utf-8')).encrypt(entity_id.encode('utf8'))
-        device_id = device_id.replace('+', '-')
-        device_id = device_id.replace('/', '_')
-        device_id = device_id.replace('=', '')
-    return device_id
+        new_device_id = AESCipher(ENTITY_KEY.encode('utf-8')).encrypt(device_id.encode('utf8'))
+        new_device_id = new_device_id.replace('+', '-')
+        new_device_id = new_device_id.replace('/', '_')
+        new_device_id = new_device_id.replace('=', '')
+    return new_device_id
 
 def hsv2rgb(hsvColorDic):
 
