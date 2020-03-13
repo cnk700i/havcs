@@ -234,7 +234,7 @@ class VoiceControlDeviceManager:
                 for alias in aliases:
                     if alias in device_name:
                         probably_device_names += [alias]
-            return max(probably_device_names) if probably_device_names else None
+            return probably_device_names[0] if probably_device_names else None
             
         return device_name
 
