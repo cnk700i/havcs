@@ -401,7 +401,7 @@ async def async_setup_entry(hass, entry):
                     _LOGGER.debug('[skill] bind device to %s:\nbind_entity_ids = %s, unbind_entity_ids = %s', platform, bind_entity_ids, unbind_entity_ids)
 
                     if payload:
-                        url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
+                        url = 'https://havcs.ljr.im:8123/skill/smarthome.php?v=update&AppKey='+app_key
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
@@ -428,7 +428,7 @@ async def async_setup_entry(hass, entry):
                     payload = HANDLER[platform].report_device(entity.entity_id)
                     _LOGGER.debug('[skill] report device to %s: platform = %s, entity_id = %s, data = %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
                     if payload:
-                        url = 'https://ai-home.ljr.im/skill/'+platform+'.php?v=report&AppKey='+app_key
+                        url = 'https://havcs.ljr.im:8123/skill/'+platform+'.php?v=report&AppKey='+app_key
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
