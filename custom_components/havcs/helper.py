@@ -358,7 +358,7 @@ class VoiceControlDeviceManager:
         return formatted_property
 
     def get_device_actions(self, hass, entity_id, raw_attributes, device_type) -> list:
-        if ATTR_DEVICE_ACTIONS in raw_attributes:
+        if ATTR_DEVICE_ACTIONS in raw_attributes and raw_attributes[ATTR_DEVICE_ACTIONS]:
             # actions = [HAVCS_ACTIONS_ALIAS[DOMAIN].get(action) for action in raw_attributes[ATTR_DEVICE_ACTIONS].keys() if HAVCS_ACTIONS_ALIAS[DOMAIN].get(action)]
             actions = raw_attributes[ATTR_DEVICE_ACTIONS]
             if isinstance(actions, str):

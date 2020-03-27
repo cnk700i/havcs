@@ -43,10 +43,11 @@ import re
 from aiohttp import web
 from homeassistant.helpers.entity_component import EntityComponent
 from urllib import parse
-from .const import DATA_HAVCS_HANDLER, DATA_HAVCS_CONFIG, DATA_HAVCS_MQTT, DATA_HAVCS_BIND_MANAGER, DATA_HAVCS_ITEMS, PLATFORM_ALIAS, HAVCS_SERVICE_URL, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, DEVICE_TYPE_LIST, DEVICE_ATTRIBUTE_LIST, DEVICE_ACTION_LIST, DEVICE_PLATFORM_LIST
+from .const import DEVICE_ATTRIBUTE_DICT, DATA_HAVCS_HANDLER, DATA_HAVCS_CONFIG, DATA_HAVCS_MQTT, DATA_HAVCS_BIND_MANAGER, DATA_HAVCS_ITEMS, DEVICE_PLATFORM_DICT, HAVCS_SERVICE_URL, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ICON, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, DEVICE_TYPE_DICT, DEVICE_ATTRIBUTE_DICT, DEVICE_ACTION_DICT, DEVICE_PLATFORM_DICT
 from .device import VoiceControllDevice
 from voluptuous.error import Error as VoluptuousError
-
+from homeassistant.util.yaml import save_yaml
+import shutil
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
@@ -136,12 +137,12 @@ SKILL_SCHEMA = vol.Schema({
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), DEVICE_PLATFORM_LIST),
+        vol.Required(CONF_PLATFORM): vol.All(cv.ensure_list, vol.Length(min=1), list(DEVICE_PLATFORM_DICT.keys())),
         vol.Optional(CONF_HTTP): vol.Any(HTTP_SCHEMA, None),
         vol.Optional(CONF_HTTP_PROXY): vol.Any(HTTP_PROXY, None),
         vol.Optional(CONF_SKILL): vol.Any(SKILL_SCHEMA, None),
         vol.Optional(CONF_SETTING): vol.Any(SETTING_SCHEMA, None),
-        vol.Optional(CONF_DEVICE_CONFIG): cv.isfile,
+        vol.Optional(CONF_DEVICE_CONFIG, default='text'): vol.Any('text', 'ui'),
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -149,17 +150,18 @@ HAVCS_SERVICE_SCHEMA = vol.Schema({
 })
 
 DEVICD_ACTIONS_SCHEMA = vol.Schema({
-    vol.In(DEVICE_ACTION_LIST): vol.All(cv.ensure_list, vol.Schema([vol.All(cv.ensure_list, vol.Length(min=3, max=3))]))
+    vol.In(list(DEVICE_ACTION_DICT.keys())): vol.All(cv.ensure_list, vol.Schema([vol.All(cv.ensure_list, vol.Length(min=3, max=3))]))
 })
 
 DEVICE_ENTRY_SCHEMA = vol.Schema({
-    vol.Optional(ATTR_DEVICE_VISABLE): vol.All(cv.ensure_list, DEVICE_PLATFORM_LIST),
+    vol.Optional(ATTR_DEVICE_VISABLE): vol.All(cv.ensure_list, list(DEVICE_PLATFORM_DICT.keys())),
     vol.Required(ATTR_DEVICE_ENTITY_ID): cv.ensure_list,
-    vol.Optional(ATTR_DEVICE_TYPE): vol.In(DEVICE_TYPE_LIST),
+    vol.Optional(ATTR_DEVICE_TYPE): vol.In(list(DEVICE_TYPE_DICT.keys())),
     vol.Optional(ATTR_DEVICE_NAME): cv.string,
     vol.Optional(ATTR_DEVICE_ZONE): cv.string,
-    vol.Optional(ATTR_DEVICE_ATTRIBUTES): vol.All(cv.ensure_list, DEVICE_ATTRIBUTE_LIST),
-    vol.Optional(ATTR_DEVICE_ACTIONS): vol.Any(DEVICD_ACTIONS_SCHEMA, vol.All(cv.ensure_list, DEVICE_ACTION_LIST))
+    vol.Optional(ATTR_DEVICE_ICON): cv.string,
+    vol.Optional(ATTR_DEVICE_ATTRIBUTES): vol.All(cv.ensure_list, list(DEVICE_ATTRIBUTE_DICT.keys())),
+    vol.Optional(ATTR_DEVICE_ACTIONS): vol.Any(DEVICD_ACTIONS_SCHEMA, vol.All(cv.ensure_list, list(DEVICE_ACTION_DICT.keys())))
 },extra=vol.PREVENT_EXTRA)
 
 DEVICE_CONFIG_SCHEMA = vol.Schema({
@@ -201,7 +203,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
     #     if entry.data.get('platform') in remove_platforms:
     #         hass.async_create_task(hass.config_entries.async_remove(entry.entry_id))
     #     else:
-    #         entry.title=f"接入平台[{entry.data.get('platform')}-{PLATFORM_ALIAS[entry.data.get('platform')]}]，接入方式{mode}"
+    #         entry.title=f"接入平台[{entry.data.get('platform')}-{DEVICE_PLATFORM_DICT[entry.data.get('platform')]['cn_name']}]，接入方式{mode}"
     #         hass.config_entries.async_update_entry(entry)
     # main entry
     if not [entry for entry in hass.config_entries.async_entries(DOMAIN) if entry.source == config_entries.SOURCE_IMPORT]:
@@ -292,7 +294,7 @@ async def async_setup_entry(hass, config_entry):
             _LOGGER.error('[init] fail to start havcs: skill mode require mqtt congfiguration')
             return False
         MODE.append('skill')
-
+    
     havcs_util.ENTITY_KEY = conf.get(CONF_SETTING, {}).get(CONF_ENTITY_KEY)
     havcs_util.CONTEXT_HAVCS = Context(conf.get(CONF_SETTING, {}).get(CONF_USER_ID))
 
@@ -301,11 +303,24 @@ async def async_setup_entry(hass, config_entry):
         manager = hass.data[DOMAIN][DATA_HAVCS_BIND_MANAGER] = BindManager(hass, platforms)
         await manager.async_load()
 
+    device_config = conf.get(CONF_DEVICE_CONFIG)
+    if device_config == 'text':
+        havcd_config_path = os.path.join(hass.config.config_dir, 'havcs.yaml')
+        if not os.path.isfile(havcd_config_path):
+            with open(havcd_config_path, "wt") as havcd_config_file:
+                havcd_config_file.write('')
+        hass.components.frontend.async_remove_panel(DOMAIN)
+    else:
+        havcd_config_path = os.path.join(hass.config.config_dir, 'havcs-ui.yaml')
+        if not os.path.isfile(havcd_config_path):
+            if os.path.isfile(os.path.join(hass.config.config_dir, 'havcs.yaml')):
+                shutil.copyfile(os.path.join(hass.config.config_dir, 'havcs.yaml'), havcd_config_path)
+            else:
+                with open(havcd_config_path, "wt") as havcd_config_file:
+                    havcd_config_file.write('')
+        hass.http.register_view(HavcsDeviceView(hass))
+    hass.data[DOMAIN][CONF_DEVICE_CONFIG] = havcd_config_path
 
-    havcd_config_path = conf.get(CONF_DEVICE_CONFIG, os.path.join(hass.config.config_dir, 'havcs.yaml'))
-    if not os.path.isfile(havcd_config_path):
-        with open(havcd_config_path, "wt") as havcd_config_file:
-            havcd_config_file.write('')
 
     sync_device = conf.get(CONF_SKILL, {}).get(CONF_SYNC_DEVICE)
     bind_device = conf.get(CONF_SKILL, {}).get(CONF_BIND_DEVICE)
@@ -616,7 +631,7 @@ async def async_setup_entry(hass, config_entry):
                 if entry.data.get('platform') in remove_platforms:
                     await hass.async_create_task(hass.config_entries.async_remove(entry.entry_id))
                 else:
-                    entry.title=f"接入平台[{entry.data.get('platform')}-{PLATFORM_ALIAS[entry.data.get('platform')]}]，接入方式{mode}"
+                    entry.title=f"接入平台[{entry.data.get('platform')}-{DEVICE_PLATFORM_DICT[entry.data.get('platform')]['cn_name']}]，接入方式{mode}"
                     hass.config_entries.async_update_entry(entry)
 
             # await async_load_device_info()
@@ -709,7 +724,7 @@ async def async_setup_entry(hass, config_entry):
                     _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n%s', platform, [device.attributes for device in devices])
                     mind_devices = [device.attributes for device in devices if None in device.attributes.values() or [] in device.attributes.values()]
                     if mind_devices:
-                        _LOGGER.debug('!!!!!!!! 以下设备信息不完整，检查值为None的属性 !!!!!!!!')
+                        _LOGGER.debug('!!!!!!!! 以下设备信息不完整，检查值为None或[]的属性并进行设置 !!!!!!!!')
                         for mind_device in mind_devices:
                             _LOGGER.debug('%s', mind_device)
                     _LOGGER.info('[service] ------------%s 平台加载设备信息------------\n', platform)
@@ -752,6 +767,8 @@ async def async_unload_entry(hass, config_entry):
             hass.data[DOMAIN].pop(DATA_HAVCS_CONFIG)
             hass.data[DOMAIN].pop(DATA_HAVCS_ITEMS)
             hass.data[DOMAIN].pop(DATA_HAVCS_HANDLER)
+            hass.data[DOMAIN].pop(CONF_DEVICE_CONFIG)
+            hass.components.frontend.async_remove_panel(DOMAIN)
             if not hass.data[DOMAIN]:
                 hass.data.pop(DOMAIN)
         return unload_ok
@@ -898,3 +915,55 @@ class HavcsTestView(HomeAssistantView):
 
     async def head(self, request):
         return
+
+class HavcsDeviceView(HomeAssistantView):
+    url = '/havcs_device'
+    name = 'havcs_device'
+    requires_auth = True
+
+    def __init__(self, hass):
+        self._hass = hass
+        local = hass.config.path("custom_components/" + DOMAIN + "/html")
+        if os.path.isdir(local):
+            hass.http.register_static_path('/havcs', local, False)
+        hass.components.frontend.async_register_built_in_panel(
+            component_name = "iframe",
+            sidebar_title = 'HAVCS设备',
+            sidebar_icon = 'mdi:home-edit',
+            frontend_url_path = DOMAIN,
+            config = {"url": '/havcs/index.html'},
+            require_admin=True
+        )
+
+    async def post(self, request):
+        req = await request.json()
+        action = req.get('action')
+        if action == 'getList':
+            device_list = [ {**{'device_id': device_id}, **device_attributes} for device_id, device_attributes in self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].items()]
+            return self.json({ 'code': 'ok', 'Msg': '获取成功', 'data': device_list})
+        elif action == 'get':
+            device_id = req.get('device_id')
+            device = self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].get(device_id)
+            if device:
+                return self.json({ 'code': 'ok', 'Msg': '获取成功', 'data': {**{'device_id': device_id}, **device}})
+        elif action == 'getDict':
+            dict_names = req.get('data')
+            data = {}
+            for dict_name in dict_names:
+                dict_data = globals().get('DEVICE_' + dict_name.upper() + '_DICT')
+                data.update({dict_name: dict_data})
+            return self.json({ 'code': 'ok', 'Msg': '获取成功', 'data':data})
+        elif action == 'delete':
+            device_id = req.get('device_id')
+            self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].pop(device_id)
+            save_yaml(self._hass.data[DOMAIN][CONF_DEVICE_CONFIG], self._hass.data[DOMAIN][DATA_HAVCS_ITEMS])
+            return self.json({ 'code': 'ok', 'Msg': '执行成功', 'data':{'device_id': device_id}})
+        elif action == 'update':
+            device = req.get('device')
+            device_id = device.pop('device_id')
+            self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].setdefault(device_id, {})
+            # self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
+            self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
+            save_yaml(self._hass.data[DOMAIN][CONF_DEVICE_CONFIG], self._hass.data[DOMAIN][DATA_HAVCS_ITEMS])
+            return self.json({ 'code': 'ok', 'Msg': '执行成功', 'data':{'device_id': device_id}})
+        return self.json({ 'code': 'error', 'Msg': '请求'+action+'失败'})

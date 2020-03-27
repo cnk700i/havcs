@@ -1,0 +1,47 @@
+{
+    "config": {
+        "title": "HAVCS",
+        "step": {
+            "mode": {
+                "title": "HAVCS配置-步骤1（1/2）",
+                "description": "集成详细介绍见https://github.com/cnk700i/havcs",
+                "data": {
+                    "mode": "运行模式",
+                    "aligenie": "天猫精灵",
+                    "dueros": "小度音箱",
+                    "jdwhale": "叮咚音箱",
+                    "weixin": "微信企业号"
+                }
+            },
+            "broker": {
+                "title": "HAVCS配置-步骤2（2/2）",
+                "description": "集成详细介绍见https://github.com/cnk700i/havcs",
+                "data": {
+                    "url": "域名",
+                    "proxy_url": "替换[AppKey]",
+                    "broker": "MQTT服务器域名",
+                    "port": "MQTT服务器端口",
+                    "app_key": "AppKey（havcs.ljr.im:8123网站获取）",
+                    "app_secret": "AppSecret（havcs.ljr.im:8123网站获取）",
+                    "entity_key": "设备ID加密钥匙（输入16个任意字符）",
+                    "skip_test": "跳过连通性测试"
+                }
+            }
+        },
+        "error": {
+            "platform_validation": "请选择至少一个服务平台",
+            "mode_validation": "请选择运行模式",
+            "entity_key_validation": "需要16个字符长度",
+            "connecttion_test_0": "Connection successful",
+            "connecttion_test_1": "Connection refused - incorrect protocol version",
+            "connecttion_test_2": "Connection refused - invalid client identifier",
+            "connecttion_test_3": "Connection refused - server unavailable",
+            "connecttion_test_4": "Connection refused - bad username or password",
+            "connecttion_test_5": "Connection refused - not authorised",
+            "proxy_test": "mqtt连接正常，但代理转发服务异常"
+        },
+        "abort": {
+            "single_instance_allowed": "Only a single configuration of HAVCS is allowed."
+        }
+    }
+}

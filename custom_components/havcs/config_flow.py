@@ -7,7 +7,7 @@ import os
 from homeassistant import config_entries
 from homeassistant.const import (CONF_PORT, CONF_PROTOCOL, CONF_HOST)
 import re
-from .const import  HAVCS_SERVICE_URL, PLATFORM_ALIAS, CONF_MODE, CONF_APP_KEY, CONF_APP_SECRET, CONF_BROKER, CONF_ENTITY_KEY, CONF_URL, CONF_PROXY_URL, CONF_SKIP_TEST, CONF_DISCOVERY, DEFAULT_DISCOVERY, INTEGRATION, CONF_PLATFORM_ALIGENIE, CONF_PLATFORM_DUEROS, CONF_PLATFORM_JDWHALE, CONF_PLATFORM_WEIXIN
+from .const import  HAVCS_SERVICE_URL, DEVICE_PLATFORM_DICT, CONF_MODE, CONF_DEVICE_CONFIG, CONF_APP_KEY, CONF_APP_SECRET, CONF_BROKER, CONF_ENTITY_KEY, CONF_URL, CONF_PROXY_URL, CONF_SKIP_TEST, CONF_DISCOVERY, DEFAULT_DISCOVERY, INTEGRATION
 from . import util as havcs_util
 import ssl
 from hashlib import sha1
@@ -33,7 +33,9 @@ class FlowHandler(config_entries.ConfigFlow):
     async def async_step_base(self, user_input=None):
         errors = {}
         if user_input is not None:
-            self._mode=user_input.get('mode')
+            self._mode = user_input.get('mode')
+            self._device_config = 'ui' if user_input[CONF_DEVICE_CONFIG] else 'text'
+            user_input.pop(CONF_DEVICE_CONFIG)
             self._platform=[key for key in user_input if user_input[key] is True]
             if not self._platform:
                 errors['base'] = 'platform_validation'
@@ -44,11 +46,10 @@ class FlowHandler(config_entries.ConfigFlow):
         else:
             user_input = {}
         fields = OrderedDict()
-        fields[vol.Optional(CONF_PLATFORM_ALIGENIE, default = user_input.get(CONF_PLATFORM_ALIGENIE, False))] = bool
-        fields[vol.Optional(CONF_PLATFORM_DUEROS, default = user_input.get(CONF_PLATFORM_DUEROS, False))] = bool
-        fields[vol.Optional(CONF_PLATFORM_JDWHALE, default = user_input.get(CONF_PLATFORM_JDWHALE, False))] = bool
-        fields[vol.Optional(CONF_PLATFORM_WEIXIN, default = user_input.get(CONF_PLATFORM_WEIXIN, False))] = bool
+        for platform in DEVICE_PLATFORM_DICT.keys():
+            fields[vol.Optional(platform, default = user_input.get(platform, False))] = bool
         fields[vol.Optional(CONF_MODE, default = user_input.get(CONF_MODE, 0))] = vol.In({0: '选择运行模式', 1: '模式1 - http(自建技能)', 2: '模式2 - http+proxy（自建技能）', 3: '模式3 - HAVCS服务（音箱APP技能）'})
+        fields[vol.Optional(CONF_DEVICE_CONFIG, default = user_input.get(CONF_DEVICE_CONFIG, True))] = bool
         return self.async_show_form(
             step_id='base', data_schema=vol.Schema(fields), errors=errors)            
 
@@ -94,20 +95,23 @@ class FlowHandler(config_entries.ConfigFlow):
                 if self._mode == 1:
                     conf.update({
                         'http':{},
-                        'setting':{}
+                        'setting':{},
+                        'device_config': self._device_config
                     })
                     mode.append('http')
                 elif self._mode == 2:
                     conf.update({
                         'http':{},
                         'http_proxy':{},
-                        'setting': {'broker': user_input[CONF_BROKER], 'port': user_input[CONF_PORT], 'app_key': user_input[CONF_APP_KEY], 'app_secret': user_input[CONF_APP_SECRET], 'entity_key': user_input[CONF_ENTITY_KEY]}
+                        'setting': {'broker': user_input[CONF_BROKER], 'port': user_input[CONF_PORT], 'app_key': user_input[CONF_APP_KEY], 'app_secret': user_input[CONF_APP_SECRET], 'entity_key': user_input[CONF_ENTITY_KEY]},
+                        'device_config': self._device_config
                         })
                     mode.append('http_proxy')
                 elif self._mode == 3:
                     conf.update({
                         'skill': {},
-                        'setting': {'broker': user_input[CONF_BROKER], 'port': user_input[CONF_PORT], 'app_key': user_input[CONF_APP_KEY], 'app_secret': user_input[CONF_APP_SECRET], 'entity_key': user_input[CONF_ENTITY_KEY]}
+                        'setting': {'broker': user_input[CONF_BROKER], 'port': user_input[CONF_PORT], 'app_key': user_input[CONF_APP_KEY], 'app_secret': user_input[CONF_APP_SECRET], 'entity_key': user_input[CONF_ENTITY_KEY]},
+                        'device_config': self._device_config
                         })
                     mode.append('skill')
                 
@@ -126,7 +130,7 @@ class FlowHandler(config_entries.ConfigFlow):
                     if entry.data.get('platform') in remove_platforms:
                         self.hass.async_create_task(self.hass.config_entries.async_remove(entry.entry_id))
                     else:
-                        entry.title=f"接入平台[{entry.data.get('platform')}-{PLATFORM_ALIAS[entry.data.get('platform')]}]，接入方式{mode}"
+                        entry.title=f"接入平台[{entry.data.get('platform')}-{DEVICE_PLATFORM_DICT[entry.data.get('platform')]['cn_name']}]，接入方式{mode}"
                         self.hass.config_entries.async_update_entry(entry)
 
                 return self.async_create_entry(
@@ -162,7 +166,7 @@ class FlowHandler(config_entries.ConfigFlow):
         return self.async_create_entry(title='主配置[configuration.yml]', data={'platform': user_input['platform']})
 
     async def async_step_platform(self, user_input):
-        return self.async_create_entry(title=f"接入平台[{user_input['platform']}-{PLATFORM_ALIAS[user_input['platform']]}]，接入模块{user_input['mode']}", data=user_input)
+        return self.async_create_entry(title=f"接入平台[{user_input['platform']}-{DEVICE_PLATFORM_DICT[user_input['platform']]['cn_name']}]，接入模块{user_input['mode']}", data=user_input)
 
 def test_mqtt(broker, port, username, password, proxy_url, protocol='3.1'):
     """Test if we can connect to an MQTT broker."""

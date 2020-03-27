@@ -6,7 +6,7 @@ import time
 
 from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
-from .const import PROPERTY_DICT, ATTR_DEVICE_ACTIONS
+from .const import DEVICE_ATTRIBUTE_DICT, ATTR_DEVICE_ACTIONS
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -204,9 +204,9 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
                     else:
                         value = 'off'
 
-                properties += [{'name': name, 'value': value, 'scale': PROPERTY_DICT.get(name, {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': PROPERTY_DICT.get(name, {}).get('legalValue') }]
+                properties += [{'name': name, 'value': value, 'scale': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('legalValue') }]
                 
-        return properties if properties else [{'name': 'power_state', 'value': 'off', 'scale': PROPERTY_DICT.get('power_state', {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': PROPERTY_DICT.get('power_state', {}).get('legalValue') }]
+        return properties if properties else [{'name': 'power_state', 'value': 'off', 'scale': DEVICE_ATTRIBUTE_DICT.get('power_state', {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': DEVICE_ATTRIBUTE_DICT.get('power_state', {}).get('legalValue') }]
     
     def _discovery_process_actions(self, device_properties, raw_actions):
         actions = []
@@ -261,7 +261,7 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
                 if value:
                     if device_property.get('attribute').lower() in action.lower() or action == 'query_all':
                         name = device_property.get('attribute')
-                        formattd_property = {'name': name, 'value': value, 'scale': PROPERTY_DICT.get(name, {}).get('scale')}
+                        formattd_property = {'name': name, 'value': value, 'scale': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('scale')}
                         properties += [formattd_property]
         return properties
 

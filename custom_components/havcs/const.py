@@ -7,6 +7,7 @@ ATTR_DEVICE_ENTITY_ID = 'entity_id'
 ATTR_DEVICE_TYPE = 'type'
 ATTR_DEVICE_NAME = 'name'
 ATTR_DEVICE_ZONE = 'zone'
+ATTR_DEVICE_ICON = 'icon'
 ATTR_DEVICE_ATTRIBUTES = 'attributes'
 ATTR_DEVICE_ACTIONS  = 'actions'
 ATTR_DEVICE_PROPERTIES = 'properties'
@@ -30,19 +31,9 @@ CONF_APP_SECRET = 'app_secret'
 CONF_URL  = 'url'
 CONF_PROXY_URL = 'proxy_url'
 CONF_SKIP_TEST  = 'skip_test'
+CONF_DEVICE_CONFIG = 'device_config'
 
 CONF_MODE = 'mode'
-CONF_PLATFORM_ALIGENIE = 'aligenie'
-CONF_PLATFORM_DUEROS = 'dueros'
-CONF_PLATFORM_JDWHALE = 'jdwhale'
-CONF_PLATFORM_WEIXIN = 'weixin'
-
-PLATFORM_ALIAS = {
-    CONF_PLATFORM_ALIGENIE: '天猫精灵',
-    CONF_PLATFORM_DUEROS: '小度',
-    CONF_PLATFORM_JDWHALE: '小京鱼',
-    CONF_PLATFORM_WEIXIN: '企业微信'    
-}
 
 HAVCS_ACTIONS_ALIAS = {
     'jdwhale':{
@@ -67,12 +58,82 @@ HAVCS_ACTIONS_ALIAS = {
     }
 }
 
-DEVICE_PLATFORM_LIST = ['aligenie', 'dueros', 'jdwhale', 'weixin']
-DEVICE_TYPE_LIST = ['climate', 'fan', 'light', 'media_player', 'switch', 'sensor', 'cover', 'vacuum']
-DEVICE_ATTRIBUTE_LIST = ['temperature', 'brightness', 'humidity', 'pm25', 'co2', 'power_state']
-DEVICE_ACTION_LIST = ['turn_on', 'turn_off', 'timing_turn_on', 'timing_turn_off', 'query_temperature', 'query_humidity', 'increase_brightness', 'decrease_brightness']
+DEVICE_PLATFORM_DICT = {
+    'aligenie': {
+        'cn_name': '天猫精灵'
+    },
+    'dueros': {
+        'cn_name': '小度'
+    },
+    'jdwhale': {
+        'cn_name': '小京鱼'
+    },
+    'weixin': {
+        'cn_name': '企业微信'
+    }
+}
+DEVICE_TYPE_DICT = {
+    'climate': {
+        'cn_name': '空调',
+        'icon': 'mdi-air-conditioner'
+    },
+    'fan': {
+        'cn_name': '风扇',
+        'icon': 'mdi-pinwheel'
+    },
+    'light': {
+        'cn_name': '灯',
+        'icon': 'mdi-lightbulb'
+    },
+    'media_player': {
+        'cn_name': '播放器',
+        'icon': 'mdi-television-classic'
+    },
+    'switch': {
+        'cn_name': '开关',
+        'icon': 'mdi-toggle-switch'
+    },
+    'sensor': {
+        'cn_name': '传感器',
+        'icon': 'mdi-access-point-network'
+    },
+    'cover': {
+        'cn_name': '窗帘',
+        'icon': 'mdi-window-shutter'
+    },
+    'vacuum': {
+        'cn_name': '扫地机',
+        'icon': 'mdi-robot-vacuum-variant'
+    }
+}
+DEVICE_ACTION_DICT ={
+    'turn_on': {
+        'cn_name': '打开'
+    },
+    'turn_off': {
+        'cn_name': '关闭'
+    },
+    'timing_turn_on': {
+        'cn_name': '延时打开'
+    },
+    'timing_turn_off': {
+        'cn_name': '延时关闭'
+    },
+    'query_temperature': {
+        'cn_name': '查询温度'
+    },
+    'query_humidity': {
+        'cn_name': '查询湿度'
+    },
+    'increase_brightness': {
+        'cn_name': '调高亮度'
+    },
+    'decrease_brightness': {
+        'cn_name': '调低亮度'
+    }
+}
 
-PROPERTY_DICT = {
+DEVICE_ATTRIBUTE_DICT = {
     'temperature': {
         'scale': '°C',
         'legalValue': 'DOUBLE',
