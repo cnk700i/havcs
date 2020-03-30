@@ -666,7 +666,9 @@ async def async_setup_entry(hass, config_entry):
                     _LOGGER.debug('[skill] bind device to %s:\nbind_entity_ids = %s, unbind_entity_ids = %s', platform, bind_entity_ids, unbind_entity_ids)
 
                     if payload:
+
                         url = HAVCS_SERVICE_URL + '/skill/smarthome.php?v=update&AppKey='+app_key
+
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
@@ -696,7 +698,9 @@ async def async_setup_entry(hass, config_entry):
                     payload = hass.data[DOMAIN][DATA_HAVCS_HANDLER][platform].report_device(entity.entity_id)
                     _LOGGER.debug('[skill] report device to %s: platform = %s, entity_id = %s, data = %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
                     if payload:
+
                         url = HAVCS_SERVICE_URL + '/skill/'+platform+'.php?v=report&AppKey='+app_key
+                        
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
