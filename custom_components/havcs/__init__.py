@@ -1,7 +1,7 @@
 """
 author: cnk700i
 blog: ljr.im
-tested simplely On HA version: 0.101
+tested simplely On HA version: 0.104.1
 """
 
 import homeassistant.util as hass_util
@@ -666,7 +666,7 @@ async def async_setup_entry(hass, config_entry):
                     _LOGGER.debug('[skill] bind device to %s:\nbind_entity_ids = %s, unbind_entity_ids = %s', platform, bind_entity_ids, unbind_entity_ids)
 
                     if payload:
-                        url = 'https://ai-home.ljr.im/skill/smarthome.php?v=update&AppKey='+app_key
+                        url = HAVCS_SERVICE_URL + '/skill/smarthome.php?v=update&AppKey='+app_key
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
