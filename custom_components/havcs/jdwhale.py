@@ -4,8 +4,9 @@ import uuid
 import copy
 import time
 
-from .util import decrypt_device_id, encrypt_entity_id
+from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
+from .const import DATA_HAVCS_BIND_MANAGER, INTEGRATION, ATTR_DEVICE_ACTIONS
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -16,11 +17,11 @@ LOGGER_NAME = 'jdwhale'
 
 REPORT_WHEN_STARUP = True
 
-def createHandler(hass):
+def createHandler(hass, entry):
     mode = ['handler']
     if REPORT_WHEN_STARUP:
         mode.append('report_when_starup')
-    return VoiceControlJdwhale(hass, mode)
+    return VoiceControlJdwhale(hass, mode, entry)
 
 class PlatformParameter:
     device_attribute_map_h2p = {
@@ -111,11 +112,11 @@ class PlatformParameter:
             'DecrementBrightnessPercentageRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{'brightness_pct': max(attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}]),
             'SetColorRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{"hs_color": [float(payload['color']['hue']), float(payload['color']['saturation']) * 100]}])
         },
-        'input_boolean':{
-            'TurnOnRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['turn_on']], [cmnd[1] for cmnd in attributes['havcs_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['turn_on']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
-            'TurnOffRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['turn_off']], [cmnd[1] for cmnd in attributes['havcs_actions']['turn_off']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['turn_off']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_off'], [{}]),
-            'AdjustUpBrightnessRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['increase_brightness']], [cmnd[1] for cmnd in attributes['havcs_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['increase_brightness']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
-            'AdjustDownBrightnessRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['decrease_brightness']], [cmnd[1] for cmnd in attributes['havcs_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['decrease_brightness']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
+        'havcs':{
+            'TurnOnRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),
+            'TurnOffRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_off'], [{}]),
+            'AdjustUpBrightnessRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),
+            'AdjustDownBrightnessRequest': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),
         }
     }
     _controlSpeech_template = {
@@ -160,10 +161,10 @@ class PlatformParameter:
     }
 
 class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
-    def __init__(self, hass, mode):
+    def __init__(self, hass, mode, entry):
         self._hass = hass
         self._mode = mode
-        self.vcdm = VoiceControlDeviceManager(DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias)
+        self.vcdm = VoiceControlDeviceManager(entry, DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias)
     def _errorResult(self, errorCode, messsage=None):
         """Generate error result"""
         messages = {
@@ -196,7 +197,7 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
             if namespace == 'Alpha.Iot.Device.Discover':
                 err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 content = {'deviceInfo': discovery_devices}
-                await self._hass.data['havcs_bind_manager'].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
+                await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif namespace == 'Alpha.Iot.Device.Control':
                 err_result, content = await self.process_control_command(data)
             elif namespace == 'Alpha.Iot.Device.Query':
@@ -262,11 +263,11 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
         else:
             return raw_device_type
 
-    def _discovery_process_device_info(self, entity_id,  device_type, device_name, zone, properties, actions):
+    def _discovery_process_device_info(self, device_id,  device_type, device_name, zone, properties, actions):
         return {
             'actions': actions,
             'controlSpeech': [self._controlSpeech_template.get(action,'')%(device_name) if '%' in self._controlSpeech_template.get(action,'') else self._controlSpeech_template.get(action,'') for action in actions ],
-            'deviceId': encrypt_entity_id(entity_id),
+            'deviceId': encrypt_device_id(device_id),
             'deviceTypes': device_type,
             'extensions': {'manufacturerName': 'HomeAssistant'},
             'friendlyDescription': device_name,
@@ -307,11 +308,11 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
     def should_report_when_starup(self):
         return True if 'report_when_starup' in self._mode else False
 
-    async def bind_device(self,p_user_id, bind_entity_ids, unbind_entity_ids, devices):
+    async def bind_device(self,p_user_id, bind_device_ids, unbind_entity_ids, devices):
         payload = []
         for device in devices:
-            entity_id = decrypt_device_id(device['deviceId'])
-            if entity_id in bind_entity_ids:
+            devicd_id = decrypt_device_id(device['deviceId'])
+            if devicd_id in bind_device_ids:
                 bind_payload  ={
                     "header": {
                         "namespace": "Alpha.Iot.Device.Report",
@@ -326,7 +327,7 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
                     }
                 }
                 payload.append(bind_payload)
-        for entity_id in unbind_entity_ids:
+        for devicd_id in unbind_entity_ids:
             unbind_payload ={
                 "header": {
                     "namespace": "Alpha.Iot.Device.Report",
@@ -337,7 +338,7 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
                 "payload": {
                     "skillId": "",
                     "userId": p_user_id,
-                    "deviceId":encrypt_entity_id(entity_id)
+                    "deviceId":encrypt_device_id(devicd_id)
                 }
             }
             payload.append(unbind_payload)

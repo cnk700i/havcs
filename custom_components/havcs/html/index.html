@@ -1,0 +1,301 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>havcs设备管理平台</title>
+    <meta deviceName="viewport" content="width=device-width,initial-scale=1,user-scalable=0">
+    <link rel="stylesheet" href="/havcs/css/weui.min.css"/>
+    <link rel="stylesheet" href="/havcs/css/weuix.css"/>
+    <link rel="stylesheet" href="/havcs/css/jquery-weui.min.css"/>
+    <link type="text/css" href="/havcs/css/materialdesignicons.min.css" rel="stylesheet"/>
+    <script src="/havcs/js/vue.min.js"></script>
+    <script src="/havcs/js/vue-resource.min.js"></script>
+    <script src="/havcs/js/vue-router.min.js"></script>
+    <script src="/havcs/js/ha.js"></script>
+    <script src="/havcs/js/jquery.min.js"></script>
+    <script src="/havcs/js/jquery-weui.min.js"></script>
+    <style>
+        .page-hd-title {
+            text-align: center;
+            font-size: 20px;
+            color: #3cc51f;
+            font-weight: 400;
+            margin: 0 15%;
+        }
+        .blank {
+            height: 2.0em;
+            display:block;
+        }
+        .weui-label {
+    		display: block;
+            /* width: 260px; */
+            margin-right: 10px;
+    		word-wrap: break-word;
+    		word-break: break-all;
+        }
+        .weui-label div:first-child {
+            text-align: center;
+            margin: 0 auto;
+            font-size: 1em;
+        }
+        .required::after {
+            content: '* ';
+            color: red;
+        }
+        .weui-label div:nth-child(2) {
+            text-align: center;
+            margin: 0 auto;
+            font-size: 0.5em;
+        }
+        .weui-grid__icon {
+            width: 64px;
+            height: 64px;
+            text-align: center;
+            margin: 0 auto;
+        }
+        li a {
+            color: #ec6f6f;
+        }
+        .input_disabled {
+            /* color: #998f8f; */
+            
+            border: 1px solid #DDD;
+            background-color: #F5F5F5;
+            color:#ACA899;
+        }
+        .tooltip label:hover,a:hover{
+            cursor:pointer;
+        }
+   
+        /* Tooltip 容器 */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        /* Tooltip 文本 */
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 80px;
+            background-color: rgb(241, 147, 5);
+            color: #fff;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 6px;
+            font-size: 10px;
+            /* 定位 */
+            position: absolute;
+            z-index: 1;
+        }
+        
+        /* 鼠标移动上去后显示提示框 */
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
+
+        .tooltip .tooltiptext {
+            top: 5px;
+            right: 115%; 
+        }
+
+        .tooltip .tooltiptext::after {
+            content: " ";
+            position: absolute;
+            top: 50%;
+            left: 100%; /* 提示工具右侧 */
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent transparent rgb(241, 147, 5);
+        }
+
+        .tooltip .tooltiptext {
+            opacity: 0;
+            transition: opacity 1s;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body ontouchstart  class="page-bg">
+<div id="app">
+    <div class="page-hd" >
+        <h1 class="page-hd-title">
+                {{ notice.title }}
+        </h1>
+        <div class="page-hd-desc">
+    
+        </div>
+        <div class="weui-cells__title">公告</div>
+        <div class="weui-cells"> 
+            <div class="weui-cell">
+                <div class="weui-cell__hd"></div>
+                <div class="weui-cell__bd">
+                <ul id="notices">
+                    <li><a href='https://jq.qq.com/?_wv=1027&k=5mCE2MH' target="_blank">使用中遇到问题请加QQ群307773400反馈</a></li>
+                    <li v-for="item in notice.noticeList" style="display:none"><a v-bind:href='item.url' target="_blank">{{item.text}}</a></li>
+                </ul>
+                </div>
+                <div class="weui-cell__ft">
+                    <i class="weui-icon-info-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="blank"></div>
+    <p>
+      <!-- 使用 router-link 组件来导航. -->
+      <!-- 通过传入 `to` 属性指定链接. -->
+      <!-- <router-link> 默认会被渲染成一个 `<a>` 标签 -->
+      <!-- <router-link to="/">设备列表</router-link>
+      <router-link :to="{name:'edit',params:{device_id:1}}">设备信息</router-link> -->
+    </p>
+    <!-- 路由出口 -->
+    <!-- 路由匹配到的组件将渲染在这里 -->
+    <router-view :notice="notice" :device-list="deviceList" v-if="isRouterAlive"></router-view>
+    <div class="blank"></div>
+    <div class="weui-footer">
+        <p class="weui-footer__links">
+            <a href="https://ljr.im/articles/plugins-havcs-edible-instructions/" class="weui-footer__link">>介绍&教程<</a>
+            <a href="https://jq.qq.com/?_wv=1027&k=5mCE2MH" class="weui-footer__link">交流QQ群：307773400</a>
+        </p>
+        <p class="weui-footer-text">Copyright &copy; 2019-<script>document.write(new Date().getFullYear());</script> ljr.im</p>
+    </div>
+</div>
+
+<template id="list">
+    <div class="page-bd" >
+        <div class="weui-cells__title">设备列表</div>
+        <div class="weui-grids">            
+            <template v-for="(item, index) in deviceList">  
+            <a href="javascript:;" class="weui-grid js_grid" @click="addOrEdit(item.device_id)" >
+                <div class="weui-grid__icon">
+                    <i class= "mdi mdi-48px" v-bind:class="item.icon" style="color: #66ccff;"></i>
+                </div>
+                <p class="weui-grid__label">{{ item.zone?item.name+"&nbsp（"+item.zone+"）" : item.name }}</p>
+            </a>            
+            </template>           
+            
+            <a href="javascript:;" class="weui-grid js_grid" @click="addOrEdit()" >
+                <div class="weui-grid__icon">
+                    <i class="icon icon-36" style="font-size: 50px;color: #03a9f4;"></i>
+                </div>
+                <p class="weui-grid__label">添加设备</p>
+            </a>
+        </div>
+    </div>
+</template>
+<template id="edit">
+    <div class="page-bd">
+        <div class="weui-cells__title">填写下列信息</div>
+        <div class="weui-cells weui-cells_form">
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">deivce_id</div><div>（设备ID）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="device_id" type="text" v-model="device.device_id" placeholder="填写设备ID，格式'havcs.xxx'"/>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">entity_id</div><div>（对应HA实体）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="entity_id" type="text" v-model="device.entity_id" placeholder="填写关联HA实体,多个用','分隔"/>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">name</div><div>（设备名称）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="name" type="text" v-model="device.name" placeholder="填写设备名称"/>
+                </div>
+            </div>
+            <div class="weui-cell" style="display:none">
+                <div class="weui-cell__hd"><label class="weui-label"><div>en_name</div><div>（设备名称）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="en_name" type="text" v-model="device.en_name" placeholder="填写设备名称（echo音箱专用）"/>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label for="" class="weui-label"><div>zone</div><div>（位置）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input id='zone' class="weui-input" type="text" v-model='device.zone' placeholder="填写设备位置"/>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">visable</div><div>（平台）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="visable" type="text" v-model="device.visable" placeholder="选择音箱平台"/>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label for="" class="weui-label"><div class="required">type</div><div>（设备类型）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input id='type' class="weui-input" type="text" v-model="device.type" placeholder="选择设备类型"/>
+                </div>
+                <div class="weui-cell__ft tooltip">
+                    <label for="switchSyncFromType" class="weui-switch-cp">
+                        <input id="switchSyncFromType" class="weui-switch-cp__input" type="checkbox" checked="checked">
+                        <div class="weui-switch-cp__box "></div>
+                    </label>
+                    <span class="tooltiptext">同步设置图标</span>
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div>icon</div><div>（图标）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="icon" type="text" v-model="device.icon" placeholder="填写图标名称，样式见网站：http://cdn.materialdesignicons.com/5.0.45/"/>
+                </div>
+            </div>  
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label for="" class="weui-label"><div>attributes</div><div>（设备属性）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input id='attributes' class="weui-input" type="text" v-model="device.attributes" placeholder="自定义设备属性"/>                    
+                </div>
+            </div>
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label for="" class="weui-label"><div>actions</div><div>（控制指令）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input id='actions' class="weui-input" type="text" v-model="actionKeys" placeholder="自定义控制指令"/>
+                </div>
+            </div> 
+
+        </div>
+        <div v-if="showCustomAction" class="weui-cells__title">自定义actions（格式：['domain', 'service', 'service_data'], service_data要符合json格式，样例：['common_timer', 'cancel', '{"entity_id":"switch.demo"}']）</div>
+        <multi-input v-for="(value, key) in device.actions" v-if="customAction.includes(key)" :key='key' :label='key' :data='value' @update-action="updateAction"></multi-input>
+        <div class="blank"></div>
+        <div class="weui-btn-area">
+            <input type="button" href="javascript:;" class="weui-btn weui-btn_primary" @click="addOrUpdate(device.device_id)" :disabled="isChange? false: 'disabled'" :class="isChange? '': 'weui-btn_disabled'" :value="isAdd?'添 加':'更 新'"></input>
+            <a href="javascript:;" v-if="isAdd == false" class="weui-btn weui-btn_warn" @click="delOrReturn(device.device_id)">删 除</a>
+            <a href="javascript:;" class="weui-btn weui-btn_default" @click="delOrReturn(-1)">返 回</a>
+        </div> 
+    </div>
+</template>
+<template id="multi-input">
+    <div class="weui-cells weui-cells_form">
+        <base-input
+            v-for="(item, index) in items"
+            :key="item.id"
+            :label="index === 0? label : ''"
+            :default-value="{ id : item.id, value : item.value, isLastItem: index === items.length-1? true : false }"
+            @change="(id, val) => inputChange(id, val, index)"
+            @add-item="addItem"
+            @delete-item="() => deleteItem(index)"
+        />
+    </div>
+</template>
+<template id="base-input">
+    <div class="weui-cell">
+        <div class="weui-cell__hd"><label class="weui-label"><div style="font-size: 0.8em;">{{label}}</div></label></div>
+        <div class="weui-cell__bd weui-cell_primary">
+            <input class="weui-input" type="text" @change="change($event)" :value="value" :class="isLastItem? '':'input_disabled'" :disabled="isLastItem? false: 'disabled'" placeholder=""/>
+        </div>
+        <div class="weui-cell__ft" style="margin-left: 10px;">
+            <a v-if="isLastItem === false" class="icon icon-122" style="font-size: 20px;color: #f15d5d;" @click="deleteItem"></a>
+            <a v-if="isLastItem === true" class="icon icon-36" style="font-size: 20px;color: #03a9f4;" @click="addItem($event)"></a>
+        </div>
+    </div>
+</template>
+<script src="js/main.mini.js"></script>
+</body>
+</html>

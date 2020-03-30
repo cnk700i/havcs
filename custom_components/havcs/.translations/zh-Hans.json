@@ -1,0 +1,50 @@
+{
+    "config": {
+        "title": "HAVCS",
+        "step": {
+            "base": {
+                "title": "HAVCS配置-步骤1（1/2）",
+                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
+                "data": {
+                    "mode": "运行模式",
+                    "device_config": "启用设备信息管理UI",
+                    "aligenie": "天猫精灵",
+                    "dueros": "小度音箱",
+                    "jdwhale": "叮咚音箱",
+                    "weixin": "微信企业号"
+                }
+            },
+            "access": {
+                "title": "HAVCS配置-步骤2（2/2）",
+                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
+                "data": {
+                    "url": "服务url（格式https://[你的公网域名或IP]/[HA的服务uri]）",
+                    "proxy_url": "测试代理url（格式https://havcs.ljr.im:8123/h2m2h/[你的AppKey]/[HA的服务uri]）",
+                    "broker": "MQTT服务器域名",
+                    "port": "MQTT服务器端口",
+                    "app_key": "AppKey（服务网站获取）",
+                    "app_secret": "AppSecret（服务网站获取）",
+                    "entity_key": "设备ID加密钥匙（选填，16个任意字符）",
+                    "skip_test": "跳过连通性测试"
+                }
+            }
+        },
+        "error": {
+            "platform_validation": "请选择至少一个服务平台",
+            "mode_validation": "请选择运行模式",
+            "entity_key_validation": "需要16个字符长度",
+            "proxy_url_validation": "测试代理url格式有误",
+            "connecttion_test_0": "mqtt连接正常",
+            "connecttion_test_1": "mqtt连接失败 - 协议版本错误",
+            "connecttion_test_2": "mqtt连接失败 - 客户端标识不可用",
+            "connecttion_test_3": "mqtt连接失败 - 服务器不可用",
+            "connecttion_test_4": "mqtt连接失败 - 错误的用户名/密码",
+            "connecttion_test_5": "mqtt连接失败 - 未授权",
+            "proxy_test": "mqtt连接正常，但代理转发失败: 测试代理url不正确/代理转发服务异常",
+            "http_test": "外网访问失败"
+        },
+        "abort": {
+            "single_instance_allowed": "不能重复添加HAVCS集成"
+        }
+    }
+}

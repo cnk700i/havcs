@@ -4,9 +4,9 @@ import uuid
 import copy
 import time
 
-from .util import decrypt_device_id, encrypt_entity_id
+from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
-from .const import PROPERTY_DICT
+from .const import DEVICE_ATTRIBUTE_DICT, ATTR_DEVICE_ACTIONS
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
@@ -15,9 +15,9 @@ AI_HOME = True
 DOMAIN = 'weixin'
 LOGGER_NAME = 'weixin'
 
-def createHandler(hass):
+def createHandler(hass, enrty):
     mode = ['handler']
-    return VoiceControlDueros(hass, mode)
+    return VoiceControlWeixin(hass, mode, enrty)
 
 class PlatformParameter:
     device_attribute_map_h2p = {
@@ -105,11 +105,11 @@ class PlatformParameter:
             'decrease_brightness': lambda state, attributes, payload: (['light'], ['turn_on'], [{'brightness_pct': max(state.attributes['brightness'] / 255 * 100 - payload['deltaPercentage']['value'], 0)}]),
             'SetColorRequest': lambda state, attributes, payload: (['light'], ['turn_on'], [{'hs_color': [float(payload['color']['hue']), float(payload['color']['saturation']) * 100], 'brightness_pct': float(payload['color']['brightness']) * 100}])
         },
-        'input_boolean':{
-            'turn_on': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['turn_on']], [cmnd[1] for cmnd in attributes['havcs_actions']['turn_on']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['turn_on']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
-            'turn_off': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['turn_off']], [cmnd[1] for cmnd in attributes['havcs_actions']['turn_off']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['turn_off']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_off'], [{}]),
-            'increase_brightness': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['increase_brightness']], [cmnd[1] for cmnd in attributes['havcs_actions']['increase_brightness']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['increase_brightness']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),
-            'decrease_brightness': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes['havcs_actions']['decrease_brightness']], [cmnd[1] for cmnd in attributes['havcs_actions']['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in attributes['havcs_actions']['decrease_brightness']]) if attributes.get('havcs_actions') else (['input_boolean'], ['turn_on'], [{}]),                 
+        'havcs':{
+            'turn_on': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_on']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),
+            'turn_off': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['turn_off']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_off'], [{}]),
+            'increase_brightness': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['increase_brightness']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),
+            'decrease_brightness': lambda state, attributes, payload:([cmnd[0] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']], [cmnd[1] for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']], [json.loads(cmnd[2]) for cmnd in attributes[ATTR_DEVICE_ACTIONS]['decrease_brightness']]) if attributes.get(ATTR_DEVICE_ACTIONS) else (['input_boolean'], ['turn_on'], [{}]),                 
             'timing_turn_on': lambda state, attributes, payload: (['common_timer'], ['set'], [{'operation': 'custom:havcs_actions/timing_turn_on', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
             'timing_turn_off': lambda state, attributes, payload: (['common_timer'], ['set'], [{'operation': 'custom:havcs_actions/timing_turn_off', 'duration': int(payload['timestamp']['value']) - int(time.time())}]),
         }
@@ -122,11 +122,11 @@ class PlatformParameter:
         }
     }
 
-class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
-    def __init__(self, hass, mode):
+class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
+    def __init__(self, hass, mode, enrty):
         self._hass = hass
         self._mode = mode
-        self.vcdm = VoiceControlDeviceManager(DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias)
+        self.vcdm = VoiceControlDeviceManager(enrty, DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias)
     def _errorResult(self, errorCode, messsage=None):
         """Generate error result"""
         messages = {
@@ -204,9 +204,9 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                     else:
                         value = 'off'
 
-                properties += [{'name': name, 'value': value, 'scale': PROPERTY_DICT.get(name, {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': PROPERTY_DICT.get(name, {}).get('legalValue') }]
+                properties += [{'name': name, 'value': value, 'scale': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('legalValue') }]
                 
-        return properties if properties else None
+        return properties if properties else [{'name': 'power_state', 'value': 'off', 'scale': DEVICE_ATTRIBUTE_DICT.get('power_state', {}).get('scale'), 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': DEVICE_ATTRIBUTE_DICT.get('power_state', {}).get('legalValue') }]
     
     def _discovery_process_actions(self, device_properties, raw_actions):
         actions = []
@@ -228,9 +228,9 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
         else:
             return raw_device_type
 
-    def _discovery_process_device_info(self, entity_id,  device_type, device_name, zone, properties, actions):
+    def _discovery_process_device_info(self, device_id,  device_type, device_name, zone, properties, actions):
         return {
-            'deviceId': encrypt_entity_id(entity_id),
+            'deviceId': encrypt_device_id(device_id),
             'deviceName': {'cn':device_name,'en':'undefined'},
             'type': device_type,
             'zone': zone,
@@ -261,17 +261,17 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                 if value:
                     if device_property.get('attribute').lower() in action.lower() or action == 'query_all':
                         name = device_property.get('attribute')
-                        formattd_property = {'name': name, 'value': value, 'scale': PROPERTY_DICT.get(name, {}).get('scale')}
+                        formattd_property = {'name': name, 'value': value, 'scale': DEVICE_ATTRIBUTE_DICT.get(name, {}).get('scale')}
                         properties += [formattd_property]
         return properties
 
     def _decrypt_device_id(self, device_id) -> None:
         return decrypt_device_id(device_id)
 
-    # def report_device(self, entity_id):
+    # def report_device(self, device_id):
 
     #     payload = []
-    #     for p_user_id in self._hass.data['havcs_bind_manager'].get_uids(DOMAIN, entity_id):
+    #     for p_user_id in self._hass.data['havcs_bind_manager'].get_uids(DOMAIN, entity_device_idid):
     #         _LOGGER.info("[%s] report device for %s:\n", LOGGER_NAME, p_user_id)
     #         report = {
     #             "header": {
@@ -284,7 +284,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
     #                 "botId": "",
     #                 "openUid": p_user_id,
     #                 "appliance": {
-    #                     "applianceId": encrypt_entity_id(entity_id),
+    #                     "applianceId": encrypt_entity_id(device_id),
     #                     "attributeName": "turnOnState"
     #                 }
     #             }

@@ -2,6 +2,7 @@
   "domain": "havcs",
   "name": "Home Assistant Voice Control Skill",
   "documentation": "https://ljr.im",
+  "config_flow": true,
   "requirements": [
     "paho-mqtt>=1.4.0"
   ],
