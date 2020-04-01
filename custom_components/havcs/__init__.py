@@ -1,7 +1,7 @@
 """
 author: cnk700i
 blog: ljr.im
-tested simplely On HA version: 0.104.1
+tested simplely On HA version: 0.104.2
 """
 
 import homeassistant.util as hass_util
@@ -666,9 +666,7 @@ async def async_setup_entry(hass, config_entry):
                     _LOGGER.debug('[skill] bind device to %s:\nbind_entity_ids = %s, unbind_entity_ids = %s', platform, bind_entity_ids, unbind_entity_ids)
 
                     if payload:
-
                         url = HAVCS_SERVICE_URL + '/skill/smarthome.php?v=update&AppKey='+app_key
-
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
@@ -698,9 +696,7 @@ async def async_setup_entry(hass, config_entry):
                     payload = hass.data[DOMAIN][DATA_HAVCS_HANDLER][platform].report_device(entity.entity_id)
                     _LOGGER.debug('[skill] report device to %s: platform = %s, entity_id = %s, data = %s', platform, event.data[ATTR_ENTITY_ID], platform, payload)
                     if payload:
-
                         url = HAVCS_SERVICE_URL + '/skill/'+platform+'.php?v=report&AppKey='+app_key
-                        
                         data = havcs_util.AESCipher(decrypt_key).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                         try:
                             session = async_get_clientsession(hass, verify_ssl=False)
@@ -965,9 +961,10 @@ class HavcsDeviceView(HomeAssistantView):
         elif action == 'update':
             device = req.get('device')
             device_id = device.pop('device_id')
-            self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].setdefault(device_id, {})
-            # self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
-            self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
-            save_yaml(self._hass.data[DOMAIN][CONF_DEVICE_CONFIG], self._hass.data[DOMAIN][DATA_HAVCS_ITEMS])
-            return self.json({ 'code': 'ok', 'Msg': '执行成功', 'data':{'device_id': device_id}})
+            if device_id:
+                self._hass.data[DOMAIN][DATA_HAVCS_ITEMS].setdefault(device_id, {})
+                # self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
+                self._hass.data[DOMAIN][DATA_HAVCS_ITEMS][device_id].update(device)
+                save_yaml(self._hass.data[DOMAIN][CONF_DEVICE_CONFIG], self._hass.data[DOMAIN][DATA_HAVCS_ITEMS])
+                return self.json({ 'code': 'ok', 'Msg': '执行成功', 'data':{'device_id': device_id}})
         return self.json({ 'code': 'error', 'Msg': '请求'+action+'失败'})

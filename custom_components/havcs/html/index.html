@@ -193,7 +193,7 @@
         <div class="weui-cells__title">填写下列信息</div>
         <div class="weui-cells weui-cells_form">
             <div class="weui-cell">
-                <div class="weui-cell__hd"><label class="weui-label"><div class="required">deivce_id</div><div>（设备ID）</div></label></div>
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">device_id</div><div>（设备ID）</div></label></div>
                 <div class="weui-cell__bd weui-cell_primary">
                     <input class="weui-input" id="device_id" type="text" v-model="device.device_id" placeholder="填写设备ID，格式'havcs.xxx'"/>
                 </div>
@@ -265,7 +265,7 @@
         <multi-input v-for="(value, key) in device.actions" v-if="customAction.includes(key)" :key='key' :label='key' :data='value' @update-action="updateAction"></multi-input>
         <div class="blank"></div>
         <div class="weui-btn-area">
-            <input type="button" href="javascript:;" class="weui-btn weui-btn_primary" @click="addOrUpdate(device.device_id)" :disabled="isChange? false: 'disabled'" :class="isChange? '': 'weui-btn_disabled'" :value="isAdd?'添 加':'更 新'"></input>
+            <input type="button" href="javascript:;" class="weui-btn weui-btn_primary" @click="addOrUpdate(device.device_id)" :disabled="isAdd || isChange? false: 'disabled'" :class="isAdd || isChange? '': 'weui-btn_disabled'" :value="isAdd?'添 加':'更 新'"></input>
             <a href="javascript:;" v-if="isAdd == false" class="weui-btn weui-btn_warn" @click="delOrReturn(device.device_id)">删 除</a>
             <a href="javascript:;" class="weui-btn weui-btn_default" @click="delOrReturn(-1)">返 回</a>
         </div> 
@@ -296,6 +296,6 @@
         </div>
     </div>
 </template>
-<script src="js/main.mini.js"></script>
+<script src="js/main.min.js"></script>
 </body>
 </html>
