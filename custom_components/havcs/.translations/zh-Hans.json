@@ -2,9 +2,16 @@
     "config": {
         "title": "HAVCS",
         "step": {
+            "clear":{
+                "title": "HAVCS配置-清除原有集成配置",
+                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugins-havcs-edible-instructions/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
+                "data": {
+                    "comfirm": "确认清除配置"
+                }
+            },
             "base": {
                 "title": "HAVCS配置-步骤1（1/2）",
-                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
+                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugins-havcs-edible-instructions/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
                 "data": {
                     "mode": "运行模式",
                     "device_config": "启用设备信息管理UI",
@@ -16,16 +23,24 @@
             },
             "access": {
                 "title": "HAVCS配置-步骤2（2/2）",
-                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugin-smart-speaker-connected-to-home-assistant-integration-plus/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
+                "description": "插件更新前往[github](https://github.com/cnk700i/havcs)下载；详细使用说明见[博客](https://ljr.im/articles/plugins-havcs-edible-instructions/)；如使用mqtt功能访问[服务网站](https://havcs.ljr.im:8123/account)注册账号",
                 "data": {
-                    "url": "服务url（格式https://[你的公网域名或IP]/[HA的服务uri]）",
-                    "proxy_url": "测试代理url（格式https://havcs.ljr.im:8123/h2m2h/[你的AppKey]/[HA的服务uri]）",
+                    "url": "测试url（格式https://[你的公网域名或IP:端口号]/[HA的服务uri]）",
+                    "proxy_url": "测试url（格式https://havcs.ljr.im:8123/h2m2h/[你的AppKey]/[HA的服务uri]）",
                     "broker": "MQTT服务器域名",
                     "port": "MQTT服务器端口",
                     "app_key": "AppKey（服务网站获取）",
                     "app_secret": "AppSecret（服务网站获取）",
                     "entity_key": "设备ID加密钥匙（选填，16个任意字符）",
-                    "skip_test": "跳过连通性测试"
+                    "skip_test": "跳过连通性测试",
+                    "aligenie_id": "天猫精灵Client Id（注意要以aligenie开头）",
+                    "aligenie_secret": "天猫精灵Client Secret",
+                    "dueros_id": "小度音箱Client Id（注意要以dueros开头）",
+                    "dueros_secret": "小度音箱Client Secret",
+                    "jdwhale_id": "叮咚音箱Client Id（注意要以jdwhale开头）",
+                    "jdwhale_secret": "叮咚音箱Client Secret",
+                    "weixin_id": "叮咚音箱Client Id（注意要以jdwhale开头）",
+                    "weixin_secret": "叮咚音箱Client Secret"
                 }
             }
         },
@@ -40,11 +55,13 @@
             "connecttion_test_3": "mqtt连接失败 - 服务器不可用",
             "connecttion_test_4": "mqtt连接失败 - 错误的用户名/密码",
             "connecttion_test_5": "mqtt连接失败 - 未授权",
-            "proxy_test": "mqtt连接正常，但代理转发失败: 测试代理url不正确/代理转发服务异常",
-            "http_test": "外网访问失败"
+            "proxy_test": "mqtt连接正常，但代理转发失败：测试url不正确/代理转发服务异常，重试或勾选\"跳过连通性测试\"继续",
+            "http_test": "外网访问测试失败：测试url不正确/外网访问相关配置不正确，重试或勾选\"跳过连通性测试\"继续"
         },
         "abort": {
-            "single_instance_allowed": "不能重复添加HAVCS集成"
+            "single_instance_allowed": "不能重复添加HAVCS集成",
+            "clear_finish": "已清除HAVCS集成配置",
+            "clear_cancel": "取消操作"
         }
     }
 }

@@ -1,17 +1,21 @@
-import logging
+
 import copy
-from homeassistant.helpers.state import AsyncTrackStates
-from .const import STORAGE_VERSION, INTEGRATION, DATA_HAVCS_ITEMS, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ID, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, ATTR_DEVICE_PROPERTIES
-from .device import VoiceControllDevice
-from homeassistant.core import HomeAssistant
-import traceback
-from homeassistant.exceptions import ServiceNotFound
 import voluptuous as vol
 import asyncio
+import logging
+import traceback
+
+from homeassistant.exceptions import ServiceNotFound
+from homeassistant.helpers.state import AsyncTrackStates
+from homeassistant.core import HomeAssistant
+
+from .const import INTEGRATION, DATA_HAVCS_ITEMS, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ID, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, ATTR_DEVICE_PROPERTIES
+from .device import VoiceControllDevice
+
+
 _LOGGER = logging.getLogger(__name__)
 LOGGER_NAME = 'helper'
 
-STORAGE_KEY='havcs_bind_manager'
 DOMAIN_SERVICE_WITHOUT_ENTITY_ID = ['climate']
 
 class VoiceControlProcessor:
@@ -62,7 +66,7 @@ class VoiceControlProcessor:
             actions = self._discovery_process_actions(device_properties, raw_actions)
             device_type = self._discovery_process_device_type(raw_device_type)
             if None in (device_type, device_name, zone) or [] in (properties, actions):
-                _LOGGER.debug('[%s] discovery command: can get all info of entity %s, pass. [device_type = %s, device_name = %s, zone = %s, properties = %s, actions = %s]', LOGGER_NAME, device_id, device_type, device_name, zone, properties, actions)
+                _LOGGER.debug("[%s] discovery command: can get all info of entity %s, pass. [device_type = %s, device_name = %s, zone = %s, properties = %s, actions = %s]", LOGGER_NAME, device_id, device_type, device_name, zone, properties, actions)
             else:
                 devices.append(self._discovery_process_device_info(device_id, device_type, device_name, zone, properties, actions))
                 entity_ids.append(device_id)
@@ -89,11 +93,11 @@ class VoiceControlProcessor:
                 if callable(translation):
                     state = self._hass.states.get(entity_id)
                     domain_list, service_list, data_list = translation(state, device.raw_attributes, self._prase_command(command, 'payload'))
-                    _LOGGER.debug('domain_list: %s', domain_list)
-                    _LOGGER.debug('service_list: %s', service_list)
-                    _LOGGER.debug('data_list: %s', data_list)
+                    _LOGGER.debug("[%s] domain_list: %s", LOGGER_NAME, domain_list)
+                    _LOGGER.debug("[%s] service_list: %s", LOGGER_NAME, service_list)
+                    _LOGGER.debug("[%s] data_list: %s", LOGGER_NAME, data_list)
                     for i,d in enumerate(data_list):
-                        if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID and not entity_id.startswith(domain_list[i]+'.'):
+                        if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID and entity_id.startswith(domain_list[i]+'.'):
                             d.update(data)
                 else:
                     service_list[0] = translation
@@ -101,19 +105,19 @@ class VoiceControlProcessor:
                 service_list[0] = self._prase_action_p2h(action)
 
             for i in range(len(domain_list)):
-                _LOGGER.debug('[%s][task %s] domain: %s, servcie: %s, data: %s', entity_id, i, domain_list[i], service_list[i], data_list[i])
+                _LOGGER.debug("[%s] %s @task_%s: domain = %s, servcie = %s, data = %s", LOGGER_NAME, entity_id, i, domain_list[i], service_list[i], data_list[i])
                 with AsyncTrackStates(self._hass) as changed_states:
                     try:
                         result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
                     except (vol.Invalid, ServiceNotFound):
-                        _LOGGER.error('[%s][task %s] failed to call service\n%s', entity_id, i, traceback.format_exc())
+                        _LOGGER.error("[%s] %s @task_%s: failed to call service\n%s", LOGGER_NAME, entity_id, i, traceback.format_exc())
                     else:
                         if result:
-                            _LOGGER.debug('[%s][task %s] success to call service, new state: %s', entity_id, i, self._hass.states.get(entity_id))
+                            _LOGGER.debug("[%s] %s @task_%s: success to call service, new state = %s", LOGGER_NAME, entity_id, i, self._hass.states.get(entity_id))
                             success_task.append({entity_id: [domain_list[i], service_list[i], data_list[i]]})
                         else:
-                            _LOGGER.debug('[%s][task %s] failed to call service', entity_id, i)
-                _LOGGER.debug('[%s][task %s] changed_states: %s', entity_id, i, changed_states)
+                            _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
+                _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
         if not success_task:
             return self._errorResult('IOT_DEVICE_OFFLINE'), None
         # wait 1s for updating state of entity
@@ -148,6 +152,7 @@ class VoiceControlDeviceManager:
         self._places = ["门口","客厅","卧室","客房","主卧","次卧","书房","餐厅","厨房","洗手间","浴室","阳台",\
         "宠物房","老人房","儿童房","婴儿房","保姆房","玄关","一楼","二楼","三楼","四楼","楼梯","走廊",\
         "过道","楼上","楼下","影音室","娱乐室","工作间","杂物间","衣帽间","吧台","花园","温室","车库","休息室","办公室","起居室"]
+
     def all(self, hass: HomeAssistant = None, init_flag: bool = False) -> list:
         if not self._devices_cache or init_flag:
             self._devices_cache.clear()
@@ -172,8 +177,10 @@ class VoiceControlDeviceManager:
             return self._devices_cache.get(device_id)
        
         device_name = raw_attributes.get(ATTR_DEVICE_NAME)
+        device_type = None
+        zone = None
         device_type = raw_attributes.get(ATTR_DEVICE_TYPE)
-        zone = raw_attributes.get(ATTR_DEVICE_ZONE)
+        # zone = raw_attributes.get(ATTR_DEVICE_ZONE)
         entity_ids = self.get_device_related_entities(hass, raw_attributes, device_type)
         actions = []
         properties = []
@@ -199,6 +206,13 @@ class VoiceControlDeviceManager:
         }
         device = VoiceControllDevice(hass, self._entry, attributes, raw_attributes)
         return {device_id: device}
+
+    def get_entity_related_device_ids(self, hass, entity_id):
+        ids = []
+        for vc_device in self.all(hass):
+            if entity_id in vc_device.entity_id:
+                ids.append(vc_device.device_id)
+        return ids
 
     async def async_reregister_devices(self, hass = None):
         # entity_registry = await hass.helpers.entity_registry.async_get_registry()
@@ -252,7 +266,8 @@ class VoiceControlDeviceManager:
                 return device_type
 
         # Guess from device_id's domain
-        device_type = self.device_type_map_h2p.get(entity_id[:entity_id.find('.')])
+        device_type = entity_id[:entity_id.find('.')]
+        # device_type = self.device_type_map_h2p.get(entity_id[:entity_id.find('.')])
 
         return device_type
 
@@ -320,7 +335,7 @@ class VoiceControlDeviceManager:
         elif entity_id.startswith('sensor.'):
             state = hass.states.get(entity_id)
             if state is None:
-                _LOGGER.debug('[%s] can not find sensor %s', LOGGER_NAME, entity_id)
+                _LOGGER.debug("[%s] can not find sensor %s", LOGGER_NAME, entity_id)
                 return []
             unit = state.attributes.get('unit_of_measurement', '')
             friendly_name = state.attributes.get('friendly_name', '')
@@ -336,7 +351,7 @@ class VoiceControlDeviceManager:
                 attribute = 'co2'
             else:
                 attribute = None
-                _LOGGER.debug('[%s] unsupport sensor %s', LOGGER_NAME, entity_id)
+                _LOGGER.debug("[%s] unsupport sensor %s", LOGGER_NAME, entity_id)
             if not attributes_constrains or attribute in attributes_constrains:
                 properties = [{'entity_id': entity_id, 'attribute': attribute}]
         else:
@@ -392,133 +407,3 @@ class VoiceControlDeviceManager:
     def get_sensor_actions_from_properties(self, properties) -> list:
         return [ 'query_' + device_property.get('attribute') for device_property in properties]
     
-# 用于管理哪些平台哪些用户有哪些设备
-class BindManager:
-    _privious_upload_devices = {}
-    _new_upload_devices = {}
-    _discovery = set()
-    def __init__(self, hass, platforms):
-        _LOGGER.debug('[bindManager] ----init bindManager----')
-        self._store = hass.helpers.storage.Store(STORAGE_VERSION, STORAGE_KEY)
-        self._platforms = platforms
-        for platform in platforms:
-            self._new_upload_devices[platform]={}
-    
-    async def async_load(self):
-        data =  await self._store.async_load()  # load task config from disk
-        if data:
-            self._privious_upload_devices = {
-                    device['device_id']: {'device_id': device['device_id'], 'linked_account': set(device['linked_account'])} for device in data.get('upload_devices',[])
-            }
-            self._discovery = set(data.get('discovery',[]))
-            _LOGGER.debug('[bindManager] discovery:\n%s', self.discovery)
-    def get_bind_entity_ids(self, platform, p_user_id = '', repeat_upload = True):
-        _LOGGER.debug('[bindManager] privious_upload_devices:\n%s', self._privious_upload_devices)
-        _LOGGER.debug('[bindManager] new_upload_devices:\n%s', self._new_upload_devices.get(platform))
-        search = set([p_user_id + '@' + platform, '*@' + platform]) # @jdwhale获取平台所有设备，*@jdwhale表示该不限定用户
-        if repeat_upload:
-            bind_entity_ids = [device['device_id'] for device in self._new_upload_devices.get(platform).values() if search & device['linked_account'] ]
-        else:
-            bind_entity_ids = [device['device_id'] for device in self._new_upload_devices.get(platform).values() if (search & device['linked_account']) and not(search & self._privious_upload_devices.get(device['device_id'],{}).get('linked_account',set()))]
-        return bind_entity_ids
-    
-    def get_unbind_entity_ids(self, platform, p_user_id = ''):
-        search = set([p_user_id + '@' + platform, '*@' + platform])
-        unbind_devices = [device['device_id'] for device in self._privious_upload_devices.values() if (search & device['linked_account']) and not(search & self._new_upload_devices.get(platform).get(device['device_id'],{}).get('linked_account',set()))]
-        return unbind_devices
-
-    def update_lists(self, devices, platform, p_user_id= '*',repeat_upload = True):
-        if platform is None:
-            platforms = [platform for platform in self._platforms]
-        else:
-            platforms = [platform]
-
-        linked_account = set([p_user_id + '@' + platform for platform in platforms])
-        # _LOGGER.debug('[bindManager]  0.linked_account:%s', linked_account)
-        for device_id in devices:
-            if device_id in self._new_upload_devices.get(platform):
-                device =  self._new_upload_devices.get(platform).get(device_id)
-                device['linked_account'] = device['linked_account'] | linked_account
-                # _LOGGER.debug('[bindManager]  1.linked_account:%s', device['linked_account'])
-            else:
-                linked_account =linked_account | set(['@' + platform for pplatform in platform])
-                device = {
-                    'device_id': device_id,
-                    'linked_account': linked_account,
-                }
-                # _LOGGER.debug('[bindManager]  1.linked_account:%s', device['linked_account'])
-                self._new_upload_devices.get(platform)[device_id] = device
-
-    async def async_save(self, platform, p_user_id= '*'):
-        devices = {}         
-        for device_id in self.get_unbind_entity_ids(platform, p_user_id):
-            if device_id in devices:
-                device =  devices.get(device_id)
-                device['linked_account'] = device['linked_account'] | linked_account
-                # _LOGGER.debug('1.linked_account:%s', device['linked_account'])
-            else:
-                linked_account =set([p_user_id +'@'+platform])
-                device = {
-                    'device_id': device_id,
-                    'linked_account': linked_account,
-                }
-                # _LOGGER.debug('1.linked_account:%s', device['linked_account'])
-                devices[device_id] = device
-        _LOGGER.debug('[bindManager]  all_unbind_devices:\n%s',devices)
-
-        upload_devices  = [
-            {
-            'device_id': device_id,
-            'linked_account': list((self._privious_upload_devices.get(device_id,{}).get('linked_account',set()) | self._new_upload_devices.get(platform).get(device_id,{}).get('linked_account',set())) - devices.get(device_id,{}).get('linked_account',set()))
-            } for device_id in set(list(self._privious_upload_devices.keys())+list(self._new_upload_devices.get(platform).keys()))
-        ]
-        _LOGGER.debug('[bindManager] upload_devices:\n%s',upload_devices)
-        data = {
-            'upload_devices':upload_devices,
-            'discovery':self.discovery
-        }
-        await self._store.async_save(data)
-        self._privious_upload_devices = {
-                    device['device_id']: {'device_id': device['device_id'], 'linked_account': set(device['linked_account'])} for device in upload_devices
-            }
-
-    async def async_save_changed_devices(self, new_devices, platform, p_user_id = '*', force_save = False):
-        self.update_lists(new_devices, platform)
-        uid = p_user_id+'@'+platform
-        if self.check_discovery(uid) and not force_save:
-            # _LOGGER.debug('[bindManager] 用户(%s)已执行discovery', uid)
-            bind_entity_ids = []
-            unbind_entity_ids = []
-        else:
-            # _LOGGER.debug('用户(%s)启动首次执行discovery', uid)
-            self.add_discovery(uid)
-            bind_entity_ids = self.get_bind_entity_ids(platform = platform,p_user_id =p_user_id, repeat_upload = False)
-            unbind_entity_ids = self.get_unbind_entity_ids(platform = platform,p_user_id=p_user_id)
-            await self.async_save(platform, p_user_id=p_user_id)
-        # _LOGGER.debug('[bindManager] p_user_id:%s',p_user_id)
-        # _LOGGER.debug('[bindManager] get_bind_entity_ids:%s', bind_entity_ids)
-        # _LOGGER.debug('[bindManager] get_unbind_entity_ids:%s', unbind_entity_ids)
-        return bind_entity_ids,unbind_entity_ids
-
-    def check_discovery(self, uid):
-        if uid in self._discovery:
-            return True
-        else:
-            return False
-    def add_discovery(self, uid):
-        self._discovery = self._discovery | set([uid])
-
-    @property
-    def discovery(self):
-        return list(self._discovery)
-
-    def get_uids(self, platform, device_id):
-        # _LOGGER.debug('[bindManager] %s', self._discovery)
-        # _LOGGER.debug('[bindManager] %s', self._privious_upload_devices)
-        p_user_ids = []
-        for uid in self._discovery:
-            p_user_id = uid.split('@')[0]
-            p = uid.split('@')[1]
-            if p == platform and (set([uid, '*@' + platform]) & self._privious_upload_devices.get(device_id,{}).get('linked_account',set())):
-                p_user_ids.append(p_user_id)
-        return p_user_ids

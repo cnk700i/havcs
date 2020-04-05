@@ -1,4 +1,4 @@
-DOMAIN = 'havcs'
+from .const import INTEGRATION
 
 class VoiceControllDevice:
 
@@ -11,7 +11,7 @@ class VoiceControllDevice:
         self.available = True
         self.sw_version='v3'
         self.product_type = None
-        self._device_id = None
+        self._id = None
 
     @property
     def raw_attributes(self):
@@ -22,14 +22,20 @@ class VoiceControllDevice:
         return self._attributes
 
     @property
+    def id(self):
+        """Return the device_id of this device."""
+        return self._id
+
+    @property
     def device_id(self):
         """Return the device_id of this device."""
-        return self._device_id
+        return self._attributes['device_id']
 
     @property
     def entity_id(self):
         """Return the entity_ids of this device."""
         return self._attributes['entity_id']
+
     @property
     def properties(self):
         return self._attributes['properties']
@@ -55,13 +61,13 @@ class VoiceControllDevice:
         device = device_registry.async_get_or_create(
             config_entry_id=self.config_entry.entry_id,
             connections={('CONNECTION_NETWORK_MAC', self.serial)},
-            identifiers={(DOMAIN, self.serial)},
+            identifiers={(INTEGRATION, self.serial)},
             manufacturer="HAVCS",
             model=self.model,
             name=self.name,
             sw_version=self.sw_version,
         )
-        self._device_id = device.id
+        self._id = device.id
     
     async def async_setup(self):
         

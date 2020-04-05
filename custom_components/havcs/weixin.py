@@ -6,12 +6,11 @@ import time
 
 from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
-from .const import DEVICE_ATTRIBUTE_DICT, ATTR_DEVICE_ACTIONS
+from .const import DEVICE_ATTRIBUTE_DICT, ATTR_DEVICE_ACTIONS, INTEGRATION, DATA_HAVCS_BIND_MANAGER
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
-AI_HOME = True
 DOMAIN = 'weixin'
 LOGGER_NAME = 'weixin'
 
@@ -156,7 +155,7 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
             if 'Discoverer' in namespace:
                 err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 result = {'discoveredDevices': discovery_devices}
-                await self._hass.data['havcs_bind_manager'].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
+                await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif 'Controller' in namespace:
                 err_result, properties = await self.process_control_command(data)
                 result = err_result if err_result else {'properties': properties}
@@ -223,10 +222,7 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
         return list(set(actions))
 
     def _discovery_process_device_type(self, raw_device_type):
-        if raw_device_type == 'SENSOR':
-            return 'AIR_MONITOR'
-        else:
-            return raw_device_type
+        return self.device_type_map_h2p.get(raw_device_type)
 
     def _discovery_process_device_info(self, device_id,  device_type, device_name, zone, properties, actions):
         return {
@@ -271,7 +267,7 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
     # def report_device(self, device_id):
 
     #     payload = []
-    #     for p_user_id in self._hass.data['havcs_bind_manager'].get_uids(DOMAIN, entity_device_idid):
+    #     for p_user_id in self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].get_uids(DOMAIN, entity_device_idid):
     #         _LOGGER.info("[%s] report device for %s:\n", LOGGER_NAME, p_user_id)
     #         report = {
     #             "header": {

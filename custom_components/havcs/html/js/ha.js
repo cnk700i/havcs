@@ -44,13 +44,7 @@ class HA {
         }
         ele.dispatchEvent(event);
     }
-
-    post(params) {
-        return this.http('/havcs_device', params)
-    }
-
-    // http请求
-    async http(url, params) {
+    async getAuthorization(){
         let hass = top.document.querySelector('home-assistant').hass
         let auth = hass.auth
         let authorization = ''
@@ -63,13 +57,65 @@ class HA {
         } else {
             authorization = `Bearer ${auth.data.access_token}`
         }
+        return authorization
+    }
+
+    async post(params) {
+        let data
+        if(params instanceof FormData){
+            data = params
+        }else if(params instanceof Object){
+            data = JSON.stringify(params)
+        }else{
+            data = params
+        }
+        let url = '/havcs/device'
+        let authorization = await this.getAuthorization()
         return fetch(url, {
             method: 'post',
             headers: {
                 authorization
             },
-            body: JSON.stringify(params)
+            body: data
         }).then(res => res.json())
+    }
+
+    async file(params) {
+        let url = '/havcs/device'
+        let authorization = await this.getAuthorization()
+
+        fetch(url, {
+            method: 'post',
+            headers: {
+                authorization
+            },
+            body: JSON.stringify(params)
+        }).then(res => res.blob().then(blob => {
+                // It is necessary to create a new blob object with mime-type explicitly set
+                // otherwise only Chrome works like it should
+                var newBlob = new Blob([blob], {type: "application/x-yaml"})
+                console.log(res.headers)
+                console.log(res.headers.get('Content-Type'))
+                // IE doesn't allow using a blob object directly as link href
+                // instead it is necessary to use msSaveOrOpenBlob
+                if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+                    window.navigator.msSaveOrOpenBlob(newBlob);
+                    return;
+                }
+                // For other browsers:
+                // Create a link pointing to the ObjectURL containing the blob.
+
+                var a = document.createElement('a'); 
+                var url = window.URL.createObjectURL(newBlob);   // 获取 blob 本地文件连接 (blob 为纯二进制对象，不能够直接保存到磁盘上)
+                var filename = res.headers.get('Content-Disposition'); 
+                a.href = url; 
+                a.download = filename; 
+                a.click(); 
+                setTimeout(function(){
+                    // For Firefox it is necessary to delay revoking the ObjectURL
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+        }));
     }
 }
 

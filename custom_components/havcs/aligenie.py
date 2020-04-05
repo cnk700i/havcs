@@ -1,9 +1,7 @@
 import json
-import logging
-import uuid
-import copy
-import time
 from urllib.request import urlopen
+import logging
+
 from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
 from .const import ATTR_DEVICE_ACTIONS
@@ -12,7 +10,6 @@ _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 LOGGER_NAME = 'aligenie'
 
-AI_HOME = True
 DOMAIN = 'aligenie'
 
 def createHandler(hass, entry):
@@ -255,7 +252,7 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
         return list(set(actions))
 
     def _discovery_process_device_type(self, raw_device_type):
-        return raw_device_type
+        return self.device_type_map_h2p.get(raw_device_type)
 
     def _discovery_process_device_info(self, device_id,  device_type, device_name, zone, properties, actions):
         return {

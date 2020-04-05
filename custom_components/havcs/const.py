@@ -1,4 +1,4 @@
-"""Constants used by multiple MQTT modules."""
+"""Constants used by havcs."""
 HAVCS_SERVICE_URL = 'https://havcs.ljr.im:8123'
 
 ATTR_DEVICE_VISABLE  = 'visable'
@@ -15,6 +15,7 @@ ATTR_DEVICE_PROPERTIES = 'properties'
 DATA_HAVCS_CONFIG = 'config'
 DATA_HAVCS_MQTT = 'mqtt'
 DATA_HAVCS_BIND_MANAGER = 'bind_manager'
+DATA_HAVCS_HTTP_MANAGER = 'http_manager'
 DATA_HAVCS_ITEMS = 'items'
 DATA_HAVCS_HANDLER = 'handler'
 
@@ -32,16 +33,17 @@ CONF_URL  = 'url'
 CONF_PROXY_URL = 'proxy_url'
 CONF_SKIP_TEST  = 'skip_test'
 CONF_DEVICE_CONFIG = 'device_config'
+CONF_DEVICE_CONFIG_PATH = 'device_config_path'
 
 CONF_MODE = 'mode'
 
+CLIENT_PALTFORM_DICT = {
+    'jdwhale': 'https://alphadev.jd.com',
+    'dueros': 'https://xiaodu.baidu.com',
+    'aligenie': 'https://open.bot.tmall.com'
+}
+
 HAVCS_ACTIONS_ALIAS = {
-    'jdwhale':{
-        'turn_on': 'TurnOn',
-        'turn_off': 'TurnOff',
-        'increase_brightness': 'AdjustUpBrightness',
-        'decrease_brightness': 'AdjustDownBrightness'
-    },
     'aligenie':{
         'turn_on': 'turnOn',
         'turn_off': 'turnOff',
@@ -55,6 +57,12 @@ HAVCS_ACTIONS_ALIAS = {
         'decrease_brightness': 'AdjustDownBrightness',
         'timing_turn_on': 'timingTurnOn',
         'timing_turn_off': 'timingTurnOff'
+    },
+    'jdwhale':{
+        'turn_on': 'TurnOn',
+        'turn_off': 'TurnOff',
+        'increase_brightness': 'AdjustUpBrightness',
+        'decrease_brightness': 'AdjustDownBrightness'
     }
 }
 

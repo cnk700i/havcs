@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="/havcs/css/weui.min.css"/>
     <link rel="stylesheet" href="/havcs/css/weuix.css"/>
     <link rel="stylesheet" href="/havcs/css/jquery-weui.min.css"/>
-    <link type="text/css" href="/havcs/css/materialdesignicons.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="/havcs/css/materialdesignicons.min.css" type="text/css"/>
+    <link rel="shortcut icon" href="/havcs/images/favicon.ico" type="image/x-icon"/>
     <script src="/havcs/js/vue.min.js"></script>
     <script src="/havcs/js/vue-resource.min.js"></script>
     <script src="/havcs/js/vue-router.min.js"></script>
@@ -117,10 +118,89 @@
         .tooltip:hover .tooltiptext {
             opacity: 1;
         }
+
+        #wrapper {
+            text-align: center;
+            font-family: 'Lato', sans-serif;
+            text-transform: uppercase;
+        }
+        #toolbar {
+            max-width: 600px;
+            min-width: 350px;
+            margin: 10px auto;
+        }
+        #toolbar .toolbar__tip {
+            display: none;
+            color: #3AB09E;
+            position: absolute;
+        }
+        .icons { 
+            width: 80%; margin: 0 auto;
+            -webkit-transition: -webkit-all 1s cubic-bezier(.87, -.41, .19, 1.44);
+            transition: all 1s cubic-bezier(.87, -.41, .19, 1.44);
+            overflow: hidden;
+            height: auto;
+            list-style: none;
+            background-color: #ffffff;
+            box-shadow: 1px 1px 1px 1px #DCDCDC;
+            border-radius: 2em;
+            -moz-user-select:none;
+            -ms-user-select:none;
+            user-select:none;
+            }
+        .icons li {
+            position: relative;
+            color: #3AB09E;
+            width: 18%;
+            display: inline-block;
+            -webkit-user-select:none;
+            }
+        .hvr-overline-from-center {
+            width: 60%;
+            display: inline-block;
+            vertical-align: middle;
+            -webkit-transform: perspective(1px) translateZ(0);
+            transform: perspective(1px) translateZ(0);
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0);
+            position: relative;
+            overflow: hidden;
+        }
+        .hvr-overline-from-center:before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            left: 51%;
+            right: 51%;
+            top: 0;
+            background: #2098D1;
+            height: 4px;
+            -webkit-transition-property: left, right;
+            transition-property: left, right;
+            -webkit-transition-duration: 0.3s;
+            transition-duration: 0.3s;
+            -webkit-transition-timing-function: ease-out;
+            transition-timing-function: ease-out;
+        }
+        .hvr-overline-from-center:hover {
+            cursor: pointer;
+        }
+        .hvr-overline-from-center:hover:before, .hvr-overline-from-center:focus:before, .hvr-overline-from-center:active:before {
+            left: 0;
+            right: 0;
+        }
+        .weui-dialog__title {
+            font-size: 15px;
+        }
+        .weui-dialog__bd {
+            text-align: left;
+            overflow: auto;
+            min-height: 400px;
+            max-height: 500px;
+        }
     </style>
 </head>
 
-<body ontouchstart  class="page-bg">
+<body ontouchstart class="page-bg">
 <div id="app">
     <div class="page-hd" >
         <h1 class="page-hd-title">
@@ -177,15 +257,31 @@
                 </div>
                 <p class="weui-grid__label">{{ item.zone?item.name+"&nbsp（"+item.zone+"）" : item.name }}</p>
             </a>            
-            </template>           
-            
-            <a href="javascript:;" class="weui-grid js_grid" @click="addOrEdit()" >
+            </template>
+
+            <!-- <a href="javascript:;" class="weui-grid js_grid" @click="addOrEdit()" >
                 <div class="weui-grid__icon">
                     <i class="icon icon-36" style="font-size: 50px;color: #03a9f4;"></i>
                 </div>
                 <p class="weui-grid__label">添加设备</p>
-            </a>
+            </a> -->
         </div>
+        <div class="blank"></div>
+        <div id="wrapper">
+            <div id="toolbar">
+                <span class="toolbar__tip">tip text</span>
+                <ul class="icons">
+                    <li><div class="hvr-overline-from-center" tooltiptext="添加设备" @click="addOrEdit()"><i class="mdi mdi-36px mdi-plus-box"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="导出设备" @click="exportDevices()"><i class="mdi mdi-36px mdi-download"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="导入设备" @click="importDevices()"><i class="mdi mdi-36px mdi-upload"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="同步设备" @click="syncDevices()"><i class="mdi mdi-36px mdi-autorenew"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="插件配置" @click="getConfig()"><i class="mdi mdi-36px mdi-format-list-text"></i></div></li>
+                </ul>
+            </div>
+        </div>
+        <form id="fileUploadForm" enctype="multipart/form-data">
+            <input type="file" name="fileUpload" id="fileUpload" style="display:none" @change="upload(event)">
+        </form>
     </div>
 </template>
 <template id="edit">

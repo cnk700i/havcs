@@ -1,7 +1,6 @@
 import json
 import logging
 import uuid
-import copy
 import time
 
 from .util import decrypt_device_id, encrypt_device_id
@@ -11,7 +10,6 @@ from .const import DATA_HAVCS_BIND_MANAGER, INTEGRATION, ATTR_DEVICE_ACTIONS
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 
-AI_HOME = True
 DOMAIN = 'jdwhale'
 LOGGER_NAME = 'jdwhale'
 
@@ -84,7 +82,7 @@ class PlatformParameter:
         'light': 'LIGHT',
         'media_player': 'TV_SET',
         'switch': 'SWITCH',
-        'sensor': 'SENSOR',
+        'sensor': 'AIR_CLEANER',
         'cover': 'CURTAIN',
         'vacuum': 'SWEEPING_ROBOT',
         }
@@ -258,10 +256,7 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
         return list(set(actions))
 
     def _discovery_process_device_type(self, raw_device_type):
-        if raw_device_type == 'SENSOR':
-            return 'AIR_CLEANER'
-        else:
-            return raw_device_type
+        return self.device_type_map_h2p.get(raw_device_type)
 
     def _discovery_process_device_info(self, device_id,  device_type, device_name, zone, properties, actions):
         return {

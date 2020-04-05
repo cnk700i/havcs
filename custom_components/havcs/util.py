@@ -1,22 +1,18 @@
 from Crypto.Cipher import AES
-from base64 import b64decode
-from base64 import b64encode
+from base64 import b64decode, b64encode
 import homeassistant.util.color as color_util
 import time
-import logging
 import re
 import jwt
 from typing import cast
-
+import logging
 
 _LOGGER = logging.getLogger(__name__)
 # _LOGGER.setLevel(logging.DEBUG)
 LOGGER_NAME = 'util'
 
-bindManager = None
 ENTITY_KEY = ''
-CONTEXT_AIHOME = None
-EXPIRATION = {}
+
 class AESCipher:
     """
     Tested under Python 3.x and PyCrypto 2.6.1.
@@ -103,10 +99,10 @@ async def async_update_token_expiration(access_token, hass, expiration):
         refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
         for user in hass.auth._store._users.values():
             if refresh_token.id in user.refresh_tokens and refresh_token.access_token_expiration != expiration:
-                _LOGGER.debug('[util] set new access token expiration for refresh_token[%s]', refresh_token.id)
+                _LOGGER.debug("[util] set new access token expiration for refresh_token[%s]", refresh_token.id)
                 refresh_token.access_token_expiration = expiration
                 user.refresh_tokens[refresh_token.id] = refresh_token
                 hass.auth._store._async_schedule_save()
                 break
     except jwt.InvalidTokenError:
-        _LOGGER.debug('[util] access_token[%s] is invalid, try another reauthorization on website.', access_token)
+        _LOGGER.debug("[util] access_token[%s] is invalid, try another reauthorization on website", access_token)

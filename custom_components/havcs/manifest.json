@@ -3,11 +3,7 @@
   "name": "Home Assistant Voice Control Skill",
   "documentation": "https://ljr.im",
   "config_flow": true,
-  "requirements": [
-    "paho-mqtt>=1.4.0"
-  ],
-  "dependencies": [],
-  "codeowners": [
-    "@cnk700i"
-  ]
+  "requirements": ["paho-mqtt>=1.4.0"],
+  "dependencies": ["mqtt"],
+  "codeowners": ["@cnk700i"]
 }
