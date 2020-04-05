@@ -195,7 +195,8 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                 action = 'DiscoverAppliancesResponse'
                 err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 result = {'discoveredAppliances': discovery_devices}
-                await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
+                if DATA_HAVCS_BIND_MANAGER in self._hass.data[INTEGRATION]:
+                    await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif namespace == 'DuerOS.ConnectedHome.Control':
                 err_result, properties = await self.process_control_command(data)
                 result = err_result if err_result else {'attributes': properties}

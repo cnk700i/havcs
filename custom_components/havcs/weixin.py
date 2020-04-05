@@ -155,7 +155,8 @@ class VoiceControlWeixin(PlatformParameter, VoiceControlProcessor):
             if 'Discoverer' in namespace:
                 err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 result = {'discoveredDevices': discovery_devices}
-                await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
+                if DATA_HAVCS_BIND_MANAGER in self._hass.data[INTEGRATION]:
+                    await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif 'Controller' in namespace:
                 err_result, properties = await self.process_control_command(data)
                 result = err_result if err_result else {'properties': properties}

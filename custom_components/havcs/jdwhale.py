@@ -195,7 +195,8 @@ class VoiceControlJdwhale(PlatformParameter, VoiceControlProcessor):
             if namespace == 'Alpha.Iot.Device.Discover':
                 err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 content = {'deviceInfo': discovery_devices}
-                await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
+                if DATA_HAVCS_BIND_MANAGER in self._hass.data[INTEGRATION]:
+                    await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
             elif namespace == 'Alpha.Iot.Device.Control':
                 err_result, content = await self.process_control_command(data)
             elif namespace == 'Alpha.Iot.Device.Query':
