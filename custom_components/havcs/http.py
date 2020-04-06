@@ -141,7 +141,9 @@ class HavcsAuthorizeView(HomeAssistantView):
                     if state:
                         data.update({'state': state})
                     query_string = urlencode(data)
-                    return self.json({ 'code': 'ok', 'Msg': '成功授权', 'data': {'location': redirect_uri+'?'+query_string}})
+                    redirect_uri = parts.scheme + '://' + parts.netloc + parts.path +'?' + query_string + '&' + parts.query
+                    _LOGGER.debug("[%s][auth] redirect_uri = %s", LOGGER_NAME, redirect_uri)
+                    return self.json({ 'code': 'ok', 'Msg': '成功授权', 'data': {'location': redirect_uri}})
                     # return web.Response(headers={'Location': redirect_uri+'?'+query_string}, status=303)
                 else:
                     if not login_attemp['first_time']:
@@ -172,6 +174,9 @@ class HavcsTokenView(HomeAssistantView):
         self._client_id = ha_url
         self._expiration = expiration
 
+    async def get(self, request):
+        return web.Response(body='404 (￣ε￣) 访问到空气页面 (￣з￣)', status=404)
+
     async def post(self, request):
         headers = request.headers
         _LOGGER.debug("[%s][auth] request headers : %s", LOGGER_NAME, headers)
@@ -182,7 +187,7 @@ class HavcsTokenView(HomeAssistantView):
         except json.decoder.JSONDecodeError:
             query_string = body_data if body_data else request.query_string
             _LOGGER.debug("[%s][auth] request query : %s", LOGGER_NAME, query_string)
-            data = { k:v[0] for k, v in parse.parse_qs(query_string).items() }   
+            data = { k:v[0] for k, v in parse.parse_qs(query_string).items() }
         except:
             _LOGGER.error("[%s][auth] handle request : %s", LOGGER_NAME, traceback.format_exc() )
 
@@ -287,8 +292,12 @@ class HavcsDeviceView(HomeAssistantView):
             sidebar_icon = 'mdi:home-edit',
             frontend_url_path = INTEGRATION,
             config = {"url": '/havcs/index.html'},
-            require_admin=True
+            require_admin = True,
+            update = True
         )
+
+    async def get(self, request):
+        return web.Response(body='404 (￣ε￣) 访问到空气页面 (￣з￣)', status=404)
 
     async def post(self, request):
         if request.content_type == 'multipart/form-data':

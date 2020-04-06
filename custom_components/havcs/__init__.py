@@ -231,23 +231,21 @@ async def async_setup_entry(hass, config_entry):
             _LOGGER.warning(
                 "[init] Data in your config entry is going to override your "
                 "configuration.yaml: %s", config_entry.data)
-    
-        # conf.update(config_entry.data)
-
-        for key in config_entry.data:
-            if key in conf:
-                if isinstance(conf[key], dict):
-                    conf[key].update(config_entry.data[key])
+            for key in config_entry.data:
+                if key in conf:
+                    if isinstance(conf[key], dict):
+                        conf[key].update(config_entry.data[key])
+                    else:
+                        conf[key] = config_entry.data[key]
                 else:
                     conf[key] = config_entry.data[key]
-            else:
-                conf[key] = config_entry.data[key]
-        if CONF_HTTP not in config_entry.data and CONF_HTTP in conf:
-            conf.pop(CONF_HTTP)
-        if CONF_HTTP_PROXY not in config_entry.data and CONF_HTTP_PROXY in conf:
-            conf.pop(CONF_HTTP_PROXY)
-        if CONF_SKILL not in config_entry.data and CONF_SKILL in conf:
-            conf.pop(CONF_SKILL)
+            if CONF_HTTP not in config_entry.data and CONF_HTTP in conf:
+                conf.pop(CONF_HTTP)
+            if CONF_HTTP_PROXY not in config_entry.data and CONF_HTTP_PROXY in conf:
+                conf.pop(CONF_HTTP_PROXY)
+            if CONF_SKILL not in config_entry.data and CONF_SKILL in conf:
+                conf.pop(CONF_SKILL)
+            conf = CONFIG_SCHEMA({DOMAIN: conf})[DOMAIN]
 
     http_manager = hass.data[DOMAIN][DATA_HAVCS_HTTP_MANAGER] = HavcsHttpManager(hass, conf.get(CONF_HTTP, {}).get(CONF_HA_URL, hass.config.api.base_url), DEVICE_CONFIG_SCHEMA)
     if CONF_HTTP in conf:
@@ -305,18 +303,8 @@ async def async_setup_entry(hass, config_entry):
 
     if CONF_HTTP_PROXY not in conf and CONF_SKILL not in conf:
         _LOGGER.debug("[init] havcs only run in http mode, skip mqtt initialization")
-
         ha_url = conf.get(CONF_HTTP, {}).get(CONF_HA_URL, hass.config.api.base_url)
-
-        try:
-            session = async_get_clientsession(hass, verify_ssl=False)
-            with async_timeout.timeout(5, loop=hass.loop):
-                response = await session.post(ha_url+'/havcs_auth')
-            console.log(response.status)
-        except(asyncio.TimeoutError, aiohttp.ClientError):
-            _LOGGER.error("[auth] fail to get token, access %s in local network: timeout", ha_url)
-        except:
-            _LOGGER.error("[auth] fail to get token, access %s in local network: %s", ha_url, traceback.format_exc())
+        _LOGGER.debug("[init] ha_url = %s, base_url = %s", ha_url, hass.config.api.base_url)
     else:
         setting_conf = conf.get(CONF_SETTING)
         app_key = setting_conf.get(CONF_APP_KEY)
@@ -423,7 +411,7 @@ async def async_setup_entry(hass, config_entry):
                     _LOGGER.error("[init] can not connect to mqtt server(host = %s, port = %s, error_code = %s), check mqtt server's address and port ",broker, port, success)
             except:
                 _LOGGER.error("[init] fail to  check whether ca.crt is latest")
-            await async_unload_entry(hass, config_entry)
+
             return False
         async def async_stop_mqtt(event: Event):
             """Stop MQTT component."""
@@ -718,6 +706,7 @@ async def async_unload_entry(hass, config_entry):
             hass.components.frontend.async_remove_panel(DOMAIN)
             if not hass.data[DOMAIN]:
                 hass.data.pop(DOMAIN)
+            
         return unload_ok
 
     elif config_entry.source == SOURCE_PLATFORM:
