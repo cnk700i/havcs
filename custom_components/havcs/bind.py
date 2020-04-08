@@ -179,7 +179,7 @@ class HavcsBindManager:
                     url = HAVCS_SERVICE_URL + '/skill/smarthome.php?v=update&AppKey='+self._sync_manager.get('app_key')
                     data = havcs_util.AESCipher(self._sync_manager.get('decrypt_key')).encrypt(json.dumps(payload, ensure_ascii = False).encode('utf8'))
                     try:
-                        session = async_get_clientsession(hass, verify_ssl=False)
+                        session = async_get_clientsession(self._hass, verify_ssl=False)
                         with async_timeout.timeout(5, loop=self._hass.loop):
                             response = await session.post(url, data=data)
                             _LOGGER.debug("[skill] get bind device result from %s: %s", platform, await response.text())
