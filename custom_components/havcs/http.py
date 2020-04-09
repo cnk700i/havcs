@@ -17,7 +17,7 @@ import logging
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.components.http import HomeAssistantView
-
+from homeassistant.components.frontend import DATA_PANELS
 from .const import DATA_HAVCS_HANDLER, INTEGRATION, DATA_HAVCS_ITEMS, CONF_DEVICE_CONFIG_PATH, DATA_HAVCS_CONFIG, HAVCS_SERVICE_URL, CLIENT_PALTFORM_DICT, DEVICE_TYPE_DICT, DEVICE_PLATFORM_DICT, DEVICE_ATTRIBUTE_DICT, DEVICE_ACTION_DICT
 from . import util as havcs_util
 
@@ -286,15 +286,16 @@ class HavcsDeviceView(HomeAssistantView):
         local = hass.config.path("custom_components/" + INTEGRATION + "/html")
         if os.path.isdir(local):
             hass.http.register_static_path('/havcs', local, False)
-        hass.components.frontend.async_register_built_in_panel(
-            component_name = "iframe",
-            sidebar_title = 'HAVCS设备',
-            sidebar_icon = 'mdi:home-edit',
-            frontend_url_path = INTEGRATION,
-            config = {"url": '/havcs/index.html'},
-            require_admin = True,
-            update = True
-        )
+        panels = hass.data.setdefault(DATA_PANELS, {})
+        if INTEGRATION not in panels:
+            hass.components.frontend.async_register_built_in_panel(
+                component_name = "iframe",
+                sidebar_title = 'HAVCS设备',
+                sidebar_icon = 'mdi:home-edit',
+                frontend_url_path = INTEGRATION,
+                config = {"url": '/havcs/index.html'},
+                require_admin = True
+            )
 
     async def get(self, request):
         return web.Response(body='404 (￣ε￣) 访问到空气页面 (￣з￣)', status=404)
