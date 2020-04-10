@@ -68,7 +68,6 @@ class HavcsAuthorizeView(HomeAssistantView):
     requires_auth = False
 
     def __init__(self, hass, ha_url):
-        self._clients = hass.data[INTEGRATION][DATA_HAVCS_CONFIG].get('http', {}).get('clients', {})
         self._hass = hass
         self._ha_url = ha_url
         self._authorize_url = ha_url + self.url
@@ -80,7 +79,7 @@ class HavcsAuthorizeView(HomeAssistantView):
 
     async def get(self, request):
         client_id = request.query.get('client_id')
-        if client_id in self._clients.keys():
+        if client_id in self._hass.data[INTEGRATION][DATA_HAVCS_CONFIG].get('http', {}).get('clients', {}).keys():
             with open(self._hass.config.path("custom_components/" + INTEGRATION + "/html/login.html"), mode="r", encoding='UTF-8') as f:
                 body = f.read()
             return web.Response(body=body, content_type='text/html')
@@ -219,8 +218,10 @@ class HavcsTokenView(HomeAssistantView):
                 response = await session.post(self._token_url, data=data)
         except(asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error("[%s][auth] fail to get token, access %s in local network: timeout", LOGGER_NAME, self._token_url)
+            return web.Response(status=500)
         except:
             _LOGGER.error("[%s][auth] fail to get token, access %s in local network: %s", LOGGER_NAME, self._token_url, traceback.format_exc())
+            return web.Response(status=500)
 
         if grant_type == 'authorization_code':
             try:
