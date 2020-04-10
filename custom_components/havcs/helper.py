@@ -232,7 +232,7 @@ class VoiceControlDeviceManager:
         entity_ids = []
         for entity_id in raw_attributes.get(ATTR_DEVICE_ENTITY_ID, []):
             if entity_id.startswith('group.'):
-                for entity_in_group_id in hass.states.get(entity_id).raw_attributes.get(ATTR_DEVICE_ENTITY_ID):
+                for entity_in_group_id in hass.states.get(entity_id).attributes.get(ATTR_DEVICE_ENTITY_ID):
                     if device_type is None or entity_in_group_id.startswith(device_type+'.'):
                         entity_ids.append(entity_in_group_id)
             else:
