@@ -245,7 +245,8 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                     scale = 'CELSIUS'
                     legalValue = 'DOUBLE'
                 elif name == 'brightness':
-                    pass
+                    scale = '%'
+                    legalValue = '[0.0, 100.0]'
                 elif name == 'formaldehyde':
                     scale = 'mg/m3'
                     legalValue = 'DOUBLE'
