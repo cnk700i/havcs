@@ -266,6 +266,9 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                         value = 'OFF'
                     scale = ''
                     legalValue = '(ON, OFF)'
+                else:
+                    _LOGGER.warning("[%s] %s has unsport attribute %s", LOGGER_NAME, device_property.get('entity_id'), name)
+                    continue
                 properties += [{'name': name, 'value': value, 'scale': scale, 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': legalValue }]
                 
         return properties if properties else [{'name': 'turnOnState', 'value': 'OFF', 'scale': '', 'timestampOfSample': int(time.time()), 'uncertaintyInMilliseconds': 1000, 'legalValue': '(ON, OFF)' }]
