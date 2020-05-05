@@ -196,16 +196,19 @@ class HavcsTokenView(HomeAssistantView):
         redirect_uri = data.get('redirect_uri')
         client_id = data.get('client_id')
         client_secret = data.get('client_secret')
-        if not all((grant_type, redirect_uri, client_id, client_secret)):
+        if not all((grant_type, client_id, client_secret)):
             _LOGGER.error("[%s][auth] Invalid request: data = %s", LOGGER_NAME, data)
             web.Response(body='400 ?(￣△￣?) 参数不全拒绝访问 (?￣△￣)?', status=400)
         validation = False
-        parts = urlparse(redirect_uri)
+        if redirect_uri:
+            parts = urlparse(redirect_uri)
+        else:
+            parts = None
         if client_id.startswith('https://'):
             validation = True
         else:
             for platform in CLIENT_PALTFORM_DICT.keys():
-                if client_id.startswith(platform) and parts.scheme + '://' + parts.netloc == CLIENT_PALTFORM_DICT[platform]:
+                if client_id.startswith(platform) and (not parts or parts.scheme + '://' + parts.netloc == CLIENT_PALTFORM_DICT[platform]):
                     validation = client_secret == self._hass.data[INTEGRATION][DATA_HAVCS_CONFIG].get('http', {}).get('clients', {}).get(client_id)
                     data['client_id'] = CLIENT_PALTFORM_DICT[platform]
         if not validation:
