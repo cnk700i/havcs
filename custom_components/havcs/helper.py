@@ -9,7 +9,7 @@ from homeassistant.exceptions import ServiceNotFound
 from homeassistant.helpers.state import AsyncTrackStates
 from homeassistant.core import HomeAssistant
 
-from .const import INTEGRATION, DATA_HAVCS_ITEMS, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ID, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, ATTR_DEVICE_PROPERTIES
+from .const import DATA_HAVCS_SETTINGS, INTEGRATION, DATA_HAVCS_ITEMS, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ID, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, ATTR_DEVICE_PROPERTIES
 from .device import VoiceControllDevice
 
 
@@ -57,9 +57,12 @@ class VoiceControlProcessor:
     vcdm = None
     _hass = None
     _service_map_p2h = None
-    def process_discovery_command(self) -> tuple:
+    def process_discovery_command(self, request_from) -> tuple:
         devices = []
         entity_ids = []
+        # fix: 增加响应发现设备信息规则。自建技能或APP技能不启用则不响应对应的发现指令；自建技能与APP技能一起启用只响应APP技能的发现指令。
+        if (request_from == self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS].get('command_filter', '')):
+            return None, devices, entity_ids
         for vc_device in self.vcdm.all(self._hass):
             device_id, raw_device_type, device_name, zone, device_properties, raw_actions = self.vcdm.get_device_attrs(vc_device.attributes)
             properties = self._discovery_process_propertites(device_properties)
@@ -80,6 +83,8 @@ class VoiceControlProcessor:
             return self._errorResult('DEVICE_IS_NOT_EXIST'), None
         entity_ids=device.entity_id
         action = self._prase_command(command, 'action')
+        _LOGGER.debug("[%s] control target info: device_id = %s, name =%s , entity_ids = %s, action = %s", LOGGER_NAME, device.device_id, device.name, entity_ids,action)
+
         success_task = []
         for entity_id in entity_ids:
             domain = entity_id[:entity_id.find('.')]

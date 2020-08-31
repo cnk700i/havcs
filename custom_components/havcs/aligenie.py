@@ -169,7 +169,7 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
         }
         return {'errorCode': errorCode, 'message': messsage if messsage else messages[errorCode]}
 
-    async def handleRequest(self, data, auth = False):
+    async def handleRequest(self, data, auth = False, request_from = "http"):
         """Handle request"""
         _LOGGER.info("[%s] Handle Request:\n%s", LOGGER_NAME, data)
 
@@ -182,7 +182,7 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
 
         if auth:
             if namespace == 'AliGenie.Iot.Device.Discovery':
-                err_result, discovery_devices, entity_ids = self.process_discovery_command()
+                err_result, discovery_devices, entity_ids = self.process_discovery_command(request_from)
                 content = {'devices': discovery_devices}
             elif namespace == 'AliGenie.Iot.Device.Control':
                 err_result, content = await self.process_control_command(data)

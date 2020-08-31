@@ -44,6 +44,7 @@ class HA {
         }
         ele.dispatchEvent(event);
     }
+    
     async getAuthorization(){
         let hass = top.document.querySelector('home-assistant').hass
         let auth = hass.auth
@@ -60,7 +61,17 @@ class HA {
         return authorization
     }
 
-    async post(params) {
+    async device(params) {
+        let url = '/havcs/device'
+        return this.post(url, params)
+    }
+
+    async settings(params) {
+        let url = '/havcs/settings'
+        return this.post(url, params)
+    }
+
+    async post(url, params) {
         let data
         if(params instanceof FormData){
             data = params
@@ -69,7 +80,6 @@ class HA {
         }else{
             data = params
         }
-        let url = '/havcs/device'
         let authorization = await this.getAuthorization()
         return fetch(url, {
             method: 'post',
