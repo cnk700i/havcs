@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/havcs/css/weuix.css"/>
     <link rel="stylesheet" href="/havcs/css/jquery-weui.min.css"/>
     <link rel="stylesheet" href="/havcs/css/materialdesignicons.min.css" type="text/css"/>
+    <link rel="stylesheet" href="/havcs/css/highlight.default.css">
     <link rel="shortcut icon" href="/havcs/images/favicon.ico" type="image/x-icon"/>
     <script src="/havcs/js/vue.min.js"></script>
     <script src="/havcs/js/vue-resource.min.js"></script>
@@ -15,6 +16,7 @@
     <script src="/havcs/js/ha.js"></script>
     <script src="/havcs/js/jquery.min.js"></script>
     <script src="/havcs/js/jquery-weui.min.js"></script>
+	<script src="/havcs/js/highlight.pack.js"></script>
     <style>
         .page-hd-title {
             text-align: center;
@@ -125,7 +127,7 @@
             text-transform: uppercase;
         }
         #toolbar {
-            max-width: 600px;
+            max-width: 500px;
             min-width: 350px;
             margin: 10px auto;
         }
@@ -151,7 +153,7 @@
         .icons li {
             position: relative;
             color: #3AB09E;
-            width: 18%;
+            width: 23%;
             display: inline-block;
             -webkit-user-select:none;
             }
@@ -197,11 +199,62 @@
             min-height: 400px;
             max-height: 500px;
         }
+        
+        .weui-tabbar {
+            position: fixed;
+        }
+        .weui-footer {
+            padding-bottom: 80px;
+        }
     </style>
 </head>
 
 <body ontouchstart class="page-bg">
 <div id="app">
+
+    <p>
+    <!-- 使用 router-link 组件来导航. -->
+    <!-- 通过传入 `to` 属性指定链接. -->
+    <!-- <router-link> 默认会被渲染成一个 `<a>` 标签 -->
+    <!-- <router-link to="/">设备列表</router-link>
+    <router-link :to="{name:'edit',params:{device_id:1}}">设备信息</router-link> -->
+    </p>
+    <!-- 路由出口 -->
+    <!-- 路由匹配到的组件将渲染在这里 -->
+    <router-view :notice="notice" :device-list="deviceList" v-if="isRouterAlive"></router-view>
+    <div class="blank"></div>
+    <div class="weui-footer">
+        <p class="weui-footer__links">
+            <a href="https://ljr.im/articles/plugins-havcs-edible-instructions/" class="weui-footer__link">>介绍&教程<</a>
+            <a href="https://jq.qq.com/?_wv=1027&k=5mCE2MH" class="weui-footer__link">交流QQ群：307773400</a>
+        </p>
+        <p class="weui-footer-text">Copyright &copy; 2019-<script>document.write(new Date().getFullYear());</script> ljr.im</p>
+    </div>
+    <div class="weui-tabbar">
+        <a tab="device" class="weui-tabbar__item weui-bar__item--on">
+            <div class="weui-tabbar__icon">
+                <img src="./images/icon_nav_button.png" alt="">
+            </div>
+            <p class="weui-tabbar__label">设备管理</p>
+        </a>
+        <a tab="config" class="weui-tabbar__item">
+            <div class="weui-tabbar__icon">
+                <img src="./images/icon_nav_article.png" alt="">
+            </div>
+            <p class="weui-tabbar__label">插件配置信息</p>
+        </a>
+        <a tab="settings" class="weui-tabbar__item">
+            <div class="weui-tabbar__icon">
+                <img src="./images/icon_nav_cell.png" alt="">
+            </div>
+            <p class="weui-tabbar__label">参数设置</p>
+        </a>
+    </div>
+
+</div>
+
+<template id="deviceListTemplate">
+    <div>
     <div class="page-hd" >
         <h1 class="page-hd-title">
                 {{ notice.title }}
@@ -226,31 +279,11 @@
         </div>
     </div>
     <div class="blank"></div>
-    <p>
-      <!-- 使用 router-link 组件来导航. -->
-      <!-- 通过传入 `to` 属性指定链接. -->
-      <!-- <router-link> 默认会被渲染成一个 `<a>` 标签 -->
-      <!-- <router-link to="/">设备列表</router-link>
-      <router-link :to="{name:'edit',params:{device_id:1}}">设备信息</router-link> -->
-    </p>
-    <!-- 路由出口 -->
-    <!-- 路由匹配到的组件将渲染在这里 -->
-    <router-view :notice="notice" :device-list="deviceList" v-if="isRouterAlive"></router-view>
-    <div class="blank"></div>
-    <div class="weui-footer">
-        <p class="weui-footer__links">
-            <a href="https://ljr.im/articles/plugins-havcs-edible-instructions/" class="weui-footer__link">>介绍&教程<</a>
-            <a href="https://jq.qq.com/?_wv=1027&k=5mCE2MH" class="weui-footer__link">交流QQ群：307773400</a>
-        </p>
-        <p class="weui-footer-text">Copyright &copy; 2019-<script>document.write(new Date().getFullYear());</script> ljr.im</p>
-    </div>
-</div>
-
-<template id="list">
     <div class="page-bd" >
-        <div class="weui-cells__title">设备列表</div>
-        <div class="weui-grids">            
-            <template v-for="(item, index) in deviceList">  
+        
+        <div class="weui-cells__title">设备列表&nbsp;<span v-if="deviceList.length>0" class="weui-badge">{{ deviceList.length }}</span></div>
+        <div class="weui-grids">
+            <template v-for="(item, index) in deviceList">
             <a href="javascript:;" class="weui-grid js_grid" @click="addOrEdit(item.device_id)" >
                 <div class="weui-grid__icon">
                     <i class= "mdi mdi-48px" v-bind:class="item.icon" style="color: #66ccff;"></i>
@@ -271,20 +304,42 @@
             <div id="toolbar">
                 <span class="toolbar__tip">tip text</span>
                 <ul class="icons">
-                    <li><div class="hvr-overline-from-center" tooltiptext="添加设备" @click="addOrEdit()"><i class="mdi mdi-36px mdi-plus-box"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="添加设备" @click="addOrEdit()"><i class="mdi mdi-36px mdi-view-grid-plus"></i></div></li>
                     <li><div class="hvr-overline-from-center" tooltiptext="导出设备" @click="exportDevices()"><i class="mdi mdi-36px mdi-download"></i></div></li>
                     <li><div class="hvr-overline-from-center" tooltiptext="导入设备" @click="importDevices()"><i class="mdi mdi-36px mdi-upload"></i></div></li>
-                    <li><div class="hvr-overline-from-center" tooltiptext="同步设备" @click="syncDevices()"><i class="mdi mdi-36px mdi-autorenew"></i></div></li>
-                    <li><div class="hvr-overline-from-center" tooltiptext="插件配置" @click="getConfig()"><i class="mdi mdi-36px mdi-format-list-text"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="同步设备" @click="syncDevices()"><i class="mdi mdi-36px mdi-sync"></i></div></li>
+                    <!-- <li><div class="hvr-overline-from-center" tooltiptext="查看配置" @click="getConfig()"><i class="mdi mdi-36px mdi-text-box"></i></div></li>
+                    <li><div class="hvr-overline-from-center" tooltiptext="参数设置" @click="EditSettings()"><i class="mdi mdi-36px mdi-cog-box"></i></div></li> -->
                 </ul>
             </div>
         </div>
+        <div id="settings" class="weui-popup__container popup-bottom">
+            <div class="weui-popup__overlay"></div>
+            <div class="weui-popup__modal">
+                <div class="toolbar">
+                    <div class="toolbar-inner">
+                      <a href="javascript:;" class="picker-button close-popup">关闭</a>
+                      <h1 class="title">标题</h1>
+                    </div>
+                  </div>
+                  <div class="modal-content">
+                    <div class="weui-cells weui-cells_form">
+                        <div class="weui-cell">
+                          <div class="weui-cell__hd"><label class="weui-label">qq</label></div>
+                          <div class="weui-cell__bd">
+                            <input class="weui-input" type="number" pattern="[0-9]*" placeholder="请输入qq号">
+                          </div>
+                        </div>
+                </div>
+            </div>
+          </div>
         <form id="fileUploadForm" enctype="multipart/form-data">
             <input type="file" name="fileUpload" id="fileUpload" style="display:none" @change="upload(event)">
         </form>
     </div>
+</div>
 </template>
-<template id="edit">
+<template id="deviceEditTemplate">
     <div class="page-bd">
         <div class="weui-cells__title">填写下列信息</div>
         <div class="weui-cells weui-cells_form">
@@ -321,7 +376,7 @@
             <div class="weui-cell">
                 <div class="weui-cell__hd"><label class="weui-label"><div class="required">visable</div><div>（平台）</div></label></div>
                 <div class="weui-cell__bd weui-cell_primary">
-                    <input class="weui-input" id="visable" type="text" v-model="device.visable" placeholder="选择音箱平台"/>
+                    <input id="visable" class="weui-input" type="text" v-model="device.visable" placeholder="选择音箱平台"/>
                 </div>
             </div>
             <div class="weui-cell">
@@ -364,6 +419,44 @@
             <input type="button" href="javascript:;" class="weui-btn weui-btn_primary" @click="addOrUpdate(device.device_id)" :disabled="isAdd || isChange? false: 'disabled'" :class="isAdd || isChange? '': 'weui-btn_disabled'" :value="isAdd?'添 加':'更 新'"></input>
             <a href="javascript:;" v-if="isAdd == false" class="weui-btn weui-btn_warn" @click="delOrReturn(device.device_id)">删 除</a>
             <a href="javascript:;" class="weui-btn weui-btn_default" @click="delOrReturn(-1)">返 回</a>
+        </div> 
+    </div>
+</template>
+<template id="configTemplate">
+    <div>
+        <div class="blank"></div>
+        <div class="page-hd" >
+            <h1 class="page-hd-title">
+                {{ config.title }}
+            </h1>
+        </div>
+        <div class="blank"></div>
+        <div class="page-bd" style="width:80%;margin: 0 auto;font-weight: 500;">
+            <div v-html="config.content" v-highlight>
+            </div>
+        </div>
+    </div>
+</template>
+<template id="settingsTemplate">
+    <div>
+        <div class="blank"></div>
+        <div class="page-hd" >
+            <h1 class="page-hd-title">
+                参数设置
+            </h1>
+        </div>
+        <div class="weui-cells weui-cells_form">
+            <div class="weui-cell">
+                <div class="weui-cell__hd"><label class="weui-label"><div class="required">filter</div><div>（过滤指令）</div></label></div>
+                <div class="weui-cell__bd weui-cell_primary">
+                    <input class="weui-input" id="command_filter" type="text" v-model="settings.command_filter" placeholder="过滤指令"/>
+                </div>
+            </div>
+        </div>
+        <div class="blank"></div>
+        <div class="weui-btn-area">
+            <a href="javascript:;" class="weui-btn weui-btn_primary" @click="updateSettings()">保 存</a>
+            <a href="javascript:;" class="weui-btn weui-btn_default" @click="getSettings()">读 取</a>
         </div> 
     </div>
 </template>
