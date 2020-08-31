@@ -18,7 +18,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.components.frontend import DATA_PANELS
-from .const import DATA_HAVCS_HANDLER, INTEGRATION, DATA_HAVCS_ITEMS, CONF_DEVICE_CONFIG_PATH, DATA_HAVCS_SETTINGS, CONF_SETTINGS_CONFIG_PATH, DATA_HAVCS_CONFIG, HAVCS_SERVICE_URL, CLIENT_PALTFORM_DICT, DEVICE_TYPE_DICT, DEVICE_PLATFORM_DICT, DEVICE_ATTRIBUTE_DICT, DEVICE_ACTION_DICT
+from .const import DATA_HAVCS_HANDLER, INTEGRATION, DATA_HAVCS_ITEMS, CONF_DEVICE_CONFIG_PATH, DATA_HAVCS_CONFIG, HAVCS_SERVICE_URL, CLIENT_PALTFORM_DICT, DEVICE_TYPE_DICT, DEVICE_PLATFORM_DICT, DEVICE_ATTRIBUTE_DICT, DEVICE_ACTION_DICT
 from . import util as havcs_util
 
 from multidict import MultiDict
@@ -279,50 +279,6 @@ class HavcsTokenView(HomeAssistantView):
                 return web.Response(status=response.status)
         # return web.Response( headers={'Location': self._auth_url+'?'+query_string}, status=303)
 
-class HavcsSettingsView(HomeAssistantView):
-    url = '/havcs/settings'
-    name = 'havcs:settings'
-    requires_auth = True
-
-    def __init__(self, hass, settings_schema):
-        self._hass = hass
-        self._settings_schema = settings_schema
-    
-    async def get(self, request):
-        return web.Response(body='404 (￣ε￣) 访问到空气页面 (￣з￣)', status=404)
-
-    async def post(self, request):
-        if request.content_type == 'multipart/form-data':
-            req = await request.post()
-        else:
-            req = await request.json()
-        action = req.get('action')
-        if action == 'update':
-            settings = req.get('data')
-            if settings:
-                try:
-                    valid_settings = self._settings_schema(settings)
-                    self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS].update(settings)
-                    save_yaml(self._hass.data[INTEGRATION][CONF_SETTINGS_CONFIG_PATH], self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS])
-                    return self.json({ 'code': 'ok', 'Msg': '成功更新配置', 'data':settings})
-                except er.Invalid as e:
-                    msg = '属性校验失败：' + e.msg + ' @ data'
-                    for path in e.path:
-                        msg += '[' + str(path) + ']'
-                    _LOGGER.error("[%s][device] fail to validate settings : %s", LOGGER_NAME, msg)
-                    return self.json({ 'code': 'error', 'Msg': msg})
-                except Exception as e:
-                    _LOGGER.error("[%s][device] fail to update settings (%s) : %s", LOGGER_NAME, settings, traceback.format_exc())
-                    return self.json({ 'code': 'error', 'Msg': repr(e)})      
-        elif action == 'get':
-            settings = self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS]
-            if settings:
-                return self.json({ 'code': 'ok', 'Msg': '成功获取配置', 'data': settings})
-        elif action == 'config':
-            return self.json({ 'code': 'ok', 'Msg': '成功获取配置信息', 'data': ['配置文件路径：\n' + os.path.join(self._hass.config.config_dir, 'configuration.yaml'), self._hass.data[INTEGRATION][DATA_HAVCS_CONFIG]]})
-
-        return self.json({ 'code': 'error', 'Msg': '请求 '+action+' 失败'})
-
 class HavcsDeviceView(HomeAssistantView):
     url = '/havcs/device'
     name = 'havcs:device'
@@ -331,7 +287,6 @@ class HavcsDeviceView(HomeAssistantView):
     def __init__(self, hass, device_schema):
         self._hass = hass
         self._device_schema = device_schema
-        
         local = hass.config.path("custom_components/" + INTEGRATION + "/html")
         if os.path.isdir(local):
             hass.http.register_static_path('/havcs', local, False)
@@ -341,7 +296,7 @@ class HavcsDeviceView(HomeAssistantView):
                 component_name = "iframe",
                 sidebar_title = 'HAVCS设备',
                 sidebar_icon = 'mdi:home-edit',
-                frontend_url_path = INTEGRATION+'_panel',
+                frontend_url_path = INTEGRATION,
                 config = {"url": '/havcs/index.html'},
                 require_admin = True
             )
@@ -392,7 +347,7 @@ class HavcsDeviceView(HomeAssistantView):
                     msg = '属性校验失败：' + e.msg + ' @ data'
                     for path in e.path:
                         msg += '[' + str(path) + ']'
-                    _LOGGER.error("[%s][device] fail to validate device : %s", LOGGER_NAME, msg)
+                    _LOGGER.error("[%s][device] fail to import devices : %s", LOGGER_NAME, msg)
                     return self.json({ 'code': 'error', 'Msg': msg})
                 except Exception as e:
                     _LOGGER.error("[%s][device] fail to update device (%s: %s) : %s", LOGGER_NAME, device_id, device, traceback.format_exc())
@@ -420,17 +375,18 @@ class HavcsDeviceView(HomeAssistantView):
         elif action == 'sync':
             await self._hass.services.async_call('havcs', 'reload')
             return self.json({ 'code': 'ok', 'Msg': '成功同步设备'})
+        elif action == 'config':
+            return self.json({ 'code': 'ok', 'Msg': '成功获取配置信息', 'data': ['配置文件路径<br/>' + os.path.join(self._hass.config.config_dir, 'configuration.yaml'), self._hass.data[INTEGRATION][DATA_HAVCS_CONFIG]]})
         return self.json({ 'code': 'error', 'Msg': '请求 '+action+' 失败'})
 
 class HavcsHttpManager:
-    def __init__(self, hass, ha_url, device_schema, settings_schema):
+    def __init__(self, hass, ha_url, device_schema):
         self._retry_remove = None
         self._retry_times = 3
         self._hass = hass
         self._ha_url = ha_url
         self._expiration = None
         self._device_schema = device_schema
-        self._settings_schema = settings_schema
     
     def set_expiration(self, expiration):
         self._expiration = expiration
@@ -446,9 +402,6 @@ class HavcsHttpManager:
 
     def register_deivce_manager(self):
         self._hass.http.register_view(HavcsDeviceView(self._hass, self._device_schema))
-
-    def register_settings_manager(self):
-        self._hass.http.register_view(HavcsSettingsView(self._hass,self._settings_schema))
 
     async def async_check_http_oauth(self, triggered=None):
         _LOGGER.debug("[%s] check accessibility from local", LOGGER_NAME)

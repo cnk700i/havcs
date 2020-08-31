@@ -17,7 +17,6 @@ DATA_HAVCS_MQTT = 'mqtt'
 DATA_HAVCS_BIND_MANAGER = 'bind_manager'
 DATA_HAVCS_HTTP_MANAGER = 'http_manager'
 DATA_HAVCS_ITEMS = 'items'
-DATA_HAVCS_SETTINGS = 'settings'
 DATA_HAVCS_HANDLER = 'handler'
 
 CONF_BROKER = 'broker'
@@ -35,7 +34,6 @@ CONF_PROXY_URL = 'proxy_url'
 CONF_SKIP_TEST  = 'skip_test'
 CONF_DEVICE_CONFIG = 'device_config'
 CONF_DEVICE_CONFIG_PATH = 'device_config_path'
-CONF_SETTINGS_CONFIG_PATH = 'settings_config_path'
 
 CONF_MODE = 'mode'
 

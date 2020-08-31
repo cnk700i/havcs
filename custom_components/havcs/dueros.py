@@ -178,7 +178,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
         }
         return {'errorCode': error_code_map.get(errorCode, 'undefined'), 'message': messsage if messsage else messages.get(errorCode, 'undefined')}
 
-    async def handleRequest(self, data, auth = False, request_from = "http"):
+    async def handleRequest(self, data, auth = False):
         """Handle request"""
         _LOGGER.info("[%s] Handle Request:\n%s", LOGGER_NAME, data)
 
@@ -193,7 +193,7 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
             namespace = header['namespace']
             if namespace == 'DuerOS.ConnectedHome.Discovery':
                 action = 'DiscoverAppliancesResponse'
-                err_result, discovery_devices, entity_ids = self.process_discovery_command(request_from)
+                err_result, discovery_devices, entity_ids = self.process_discovery_command()
                 result = {'discoveredAppliances': discovery_devices}
                 if DATA_HAVCS_BIND_MANAGER in self._hass.data[INTEGRATION]:
                     await self._hass.data[INTEGRATION][DATA_HAVCS_BIND_MANAGER].async_save_changed_devices(entity_ids, DOMAIN, p_user_id)
