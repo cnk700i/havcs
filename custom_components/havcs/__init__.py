@@ -629,7 +629,7 @@ async def async_setup_entry(hass, config_entry):
                         try:
                             module = importlib.import_module('custom_components.{}.{}'.format(DOMAIN,platform))
                             _LOGGER.info("[post-task] import %s.%s", DOMAIN, platform)
-                            hass.data[DOMAIN][DATA_HAVCS_HANDLER][platform] = module.createHandler(hass, ent)
+                            hass.data[DOMAIN][DATA_HAVCS_HANDLER][platform] = await module.createHandler(hass, ent)
                             # hass.data[DOMAIN][DATA_HAVCS_HANDLER][platform].vcdm.all(hass, True)
                         except ImportError as err:
                             _LOGGER.error("[post-task] Unable to import %s.%s, %s", DOMAIN, platform, err)

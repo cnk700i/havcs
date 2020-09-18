@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'dueros'
 LOGGER_NAME = 'dueros'
 
-def createHandler(hass, entry):
+async def createHandler(hass, entry):
     mode = ['handler']
     return VoiceControlDueros(hass, mode, entry)
 

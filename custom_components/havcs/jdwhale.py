@@ -15,7 +15,7 @@ LOGGER_NAME = 'jdwhale'
 
 REPORT_WHEN_STARUP = True
 
-def createHandler(hass, entry):
+async def createHandler(hass, entry):
     mode = ['handler']
     if REPORT_WHEN_STARUP:
         mode.append('report_when_starup')

@@ -2,6 +2,8 @@ import json
 from urllib.request import urlopen
 import logging
 
+import async_timeout
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
 from .const import ATTR_DEVICE_ACTIONS
@@ -12,9 +14,26 @@ LOGGER_NAME = 'aligenie'
 
 DOMAIN = 'aligenie'
 
-def createHandler(hass, entry):
+async def createHandler(hass, entry):
     mode = ['handler']
-    return VoiceControlAligenie(hass, mode, entry)
+    try:
+        placelist_url = 'https://open.bot.tmall.com/oauth/api/placelist'
+        aliaslist_url = 'https://open.bot.tmall.com/oauth/api/aliaslist'
+        session = async_get_clientsession(hass, verify_ssl=False)
+        with async_timeout.timeout(5, loop=hass.loop):
+            response = await session.get(placelist_url)
+        placelist  = (await response.json())['data']
+        with async_timeout.timeout(5, loop=hass.loop):
+            response = await session.get(aliaslist_url)
+        aliaslist = (await response.json())['data']
+        placelist.append({'key': '电视', 'value': ['电视机']})
+        aliaslist.append({'key': '传感器', 'value': ['传感器']})
+    except:
+        placelist = []
+        aliaslist = []
+        import traceback
+        _LOGGER.info("[%s] can get places and aliases data from website, set None.\n%s", LOGGER_NAME, traceback.format_exc())
+    return VoiceControlAligenie(hass, mode, entry, placelist, aliaslist)
 
 class PlatformParameter:
     device_attribute_map_h2p = {
@@ -141,19 +160,21 @@ class PlatformParameter:
     }
 
 class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
-    def __init__(self, hass, mode, entry):
+    def __init__(self, hass, mode, entry, zone_constraints, device_name_constraints):
         self._hass = hass
         self._mode = mode
-        try:
-            self._zone_constraints  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
-            self._device_name_constraints = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
-            self._device_name_constraints.append({'key': '电视', 'value': ['电视机']})
-            self._device_name_constraints.append({'key': '传感器', 'value': ['传感器']})
-        except:
-            self._zone_constraints = []
-            self._device_name_constraints = []
-            import traceback
-            _LOGGER.info("[%s] can get places and aliases data from website, set None.\n%s", LOGGER_NAME, traceback.format_exc())
+        self._zone_constraints = zone_constraints
+        self._device_name_constraints = device_name_constraints
+        # try:
+        #     self._zone_constraints  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
+        #     self._device_name_constraints = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
+        #     self._device_name_constraints.append({'key': '电视', 'value': ['电视机']})
+        #     self._device_name_constraints.append({'key': '传感器', 'value': ['传感器']})
+        # except:
+        #     self._zone_constraints = []
+        #     self._device_name_constraints = []
+        #     import traceback
+        #     _LOGGER.info("[%s] can get places and aliases data from website, set None.\n%s", LOGGER_NAME, traceback.format_exc())
         self.vcdm = VoiceControlDeviceManager(entry, DOMAIN, self.device_action_map_h2p, self.device_attribute_map_h2p, self._service_map_p2h, self.device_type_map_h2p, self._device_type_alias, self._device_name_constraints, self._zone_constraints)
 
     def _errorResult(self, errorCode, messsage=None):
