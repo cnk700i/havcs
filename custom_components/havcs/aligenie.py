@@ -2,8 +2,6 @@ import json
 from urllib.request import urlopen
 import logging
 
-import async_timeout
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .util import decrypt_device_id, encrypt_device_id
 from .helper import VoiceControlProcessor, VoiceControlDeviceManager
 from .const import ATTR_DEVICE_ACTIONS
@@ -147,12 +145,6 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
         self._hass = hass
         self._mode = mode
         try:
-            # placelist_url = 'https://open.bot.tmall.com/oauth/api/placelist'
-            # aliaslist_url = 'https://open.bot.tmall.com/oauth/api/aliaslist'
-            # session = async_get_clientsession(hass, verify_ssl=False)
-            # with async_timeout.timeout(5, loop=hass.loop):
-            #     response = await session.get(placelist_url)
-            # ca_bytes = await response.json()
             self._zone_constraints  = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/placelist').read().decode('utf-8'))['data']
             self._device_name_constraints = json.loads(urlopen('https://open.bot.tmall.com/oauth/api/aliaslist').read().decode('utf-8'))['data']
             self._device_name_constraints.append({'key': '电视', 'value': ['电视机']})

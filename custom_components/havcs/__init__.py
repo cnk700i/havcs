@@ -210,14 +210,13 @@ async def async_setup_entry(hass, config_entry):
     # Config entry was created because user had configuration.yaml entry
     # They removed that, so remove entry.
     if config_entry.source == config_entries.SOURCE_IMPORT:
-        if not conf:
+        if conf is None:
             hass.async_create_task(
                 hass.config_entries.async_remove(config_entry.entry_id))
-            _LOGGER.info("[init] there is no config in yaml and havcs is managered by yaml, remove config entry. ")
             return False
 
     elif config_entry.source == SOURCE_PLATFORM:
-        if not conf:
+        if conf is None:
             if [entry for entry in hass.config_entries.async_entries(DOMAIN) if entry.source == config_entries.SOURCE_USER]:
                 return True
             else:

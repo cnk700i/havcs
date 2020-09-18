@@ -151,7 +151,7 @@ class HavcsAuthorizeView(HomeAssistantView):
                     login_attemp['last_time'] = datetime.now()
                     # location = request.headers.get('Referer')
                     # return web.Response(headers={'Location': location}, status=303)
-            return self.json({ 'code': 'error', 'Msg': 'HA用户密码错误/服务异常'})
+            return self.json({ 'code': 'error', 'Msg': '用户密码错误/服务异常'})
         except(asyncio.TimeoutError, aiohttp.ClientError) as e:
             _LOGGER.error("[%s][auth] timeout", LOGGER_NAME)
             return self.json({ 'code': 'error', 'Msg': repr(e)})
