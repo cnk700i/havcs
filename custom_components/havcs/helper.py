@@ -17,6 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 LOGGER_NAME = 'helper'
 
 DOMAIN_SERVICE_WITHOUT_ENTITY_ID = ['climate']
+DOMAIN_SERVICE_WITH_ENTITY_ID = ['common_timer']
 
 class VoiceControlProcessor:
     def _discovery_process_propertites(self, device_properties) -> None:
@@ -38,6 +39,9 @@ class VoiceControlProcessor:
         raise NotImplementedError()  
 
     def _prase_action_p2h(self, action) -> None:
+        for k,v in self.vcdm.device_action_map_h2p.items():
+            if v == action:
+                return k
         i = 0
         service = ''
         for c in action.split('Request')[0]:
@@ -62,6 +66,7 @@ class VoiceControlProcessor:
         entity_ids = []
         # fix: 增加响应发现设备信息规则。自建技能或APP技能不启用则不响应对应的发现指令；自建技能与APP技能一起启用只响应APP技能的发现指令。
         if (request_from == self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS].get('command_filter', '')):
+            _LOGGER.debug("[%s] request from %s match filter, return blank info", LOGGER_NAME, request_from)
             return None, devices, entity_ids
         for vc_device in self.vcdm.all(self._hass):
             device_id, raw_device_type, device_name, zone, device_properties, raw_actions = self.vcdm.get_device_attrs(vc_device.attributes)
@@ -83,46 +88,69 @@ class VoiceControlProcessor:
             return self._errorResult('DEVICE_IS_NOT_EXIST'), None
         entity_ids=device.entity_id
         action = self._prase_command(command, 'action')
-        _LOGGER.debug("[%s] control target info: device_id = %s, name =%s , entity_ids = %s, action = %s", LOGGER_NAME, device.device_id, device.name, entity_ids,action)
+        _LOGGER.debug("[%s] control target info: device_id = %s, name = %s , entity_ids = %s, action = %s", LOGGER_NAME, device.device_id, device.name, entity_ids,action)
 
         success_task = []
-        for entity_id in entity_ids:
-            domain = entity_id[:entity_id.find('.')]
-            data = {"entity_id": entity_id }
-            domain_list = [domain]
-            data_list = [data]
-            service_list =['']
 
-            if domain in self._service_map_p2h.keys():
-                translation = self._service_map_p2h[domain][action]
-                if callable(translation):
-                    state = self._hass.states.get(entity_id)
-                    domain_list, service_list, data_list = translation(state, device.raw_attributes, self._prase_command(command, 'payload'))
-                    _LOGGER.debug("[%s] domain_list: %s", LOGGER_NAME, domain_list)
-                    _LOGGER.debug("[%s] service_list: %s", LOGGER_NAME, service_list)
-                    _LOGGER.debug("[%s] data_list: %s", LOGGER_NAME, data_list)
-                    for i,d in enumerate(data_list):
-                        if 'entity_id' not in d and domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID and entity_id.startswith(domain_list[i]+'.'):
-                            d.update(data)
-                else:
-                    service_list[0] = translation
-            else:
-                service_list[0] = self._prase_action_p2h(action)
-
+        # 优先使用配置的自定义action，处理逻辑：直接调用自定义service方法
+        ha_action = self._prase_action_p2h(action)
+        if ha_action in device.custom_actions:
+            domain_list = [cmnd[0] for cmnd in device.custom_actions[ha_action]]
+            service_list = [cmnd[1] for cmnd in device.custom_actions[ha_action]]
+            data_list = [eval(cmnd[2]) for cmnd in device.custom_actions[ha_action]]
             for i in range(len(domain_list)):
-                _LOGGER.debug("[%s] %s @task_%s: domain = %s, servcie = %s, data = %s", LOGGER_NAME, entity_id, i, domain_list[i], service_list[i], data_list[i])
+                _LOGGER.debug("[%s] %s : domain = %s, servcie = %s, data = %s", LOGGER_NAME, i, domain_list[i], service_list[i], data_list[i])
                 with AsyncTrackStates(self._hass) as changed_states:
                     try:
                         result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
                     except (vol.Invalid, ServiceNotFound):
-                        _LOGGER.error("[%s] %s @task_%s: failed to call service\n%s", LOGGER_NAME, entity_id, i, traceback.format_exc())
+                        _LOGGER.error("[%s] %s : failed to call service\n%s", LOGGER_NAME, i, traceback.format_exc())
                     else:
                         if result:
-                            _LOGGER.debug("[%s] %s @task_%s: success to call service, new state = %s", LOGGER_NAME, entity_id, i, self._hass.states.get(entity_id))
-                            success_task.append({entity_id: [domain_list[i], service_list[i], data_list[i]]})
+                            _LOGGER.debug("[%s] %s : success to call service", LOGGER_NAME, i)
+                            success_task.append({i: [domain_list[i], service_list[i], data_list[i]]})
                         else:
-                            _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
-                _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
+                            _LOGGER.debug("[%s] %s : failed to call service", LOGGER_NAME, i)
+                _LOGGER.debug("[%s] %s : changed_states = %s", LOGGER_NAME, i, changed_states)
+        # 自动处理action，处理逻辑：对device的所有entity，执行action对应的service方法
+        else:
+            for entity_id in entity_ids:
+                domain = entity_id[:entity_id.find('.')]
+                data = {"entity_id": entity_id }
+                domain_list = [domain]
+                data_list = [data]
+                service_list =['']
+
+                if domain in self._service_map_p2h.keys():
+                    translation = self._service_map_p2h[domain][action]
+                    if callable(translation):
+                        state = self._hass.states.get(entity_id)
+                        domain_list, service_list, data_list = translation(state, device.raw_attributes, self._prase_command(command, 'payload'))
+                        _LOGGER.debug("[%s] prepared domain_list: %s", LOGGER_NAME, domain_list)
+                        _LOGGER.debug("[%s] prepared service_list: %s", LOGGER_NAME, service_list)
+                        _LOGGER.debug("[%s] prepared data_list: %s", LOGGER_NAME, data_list)
+                        for i,d in enumerate(data_list):
+                            if 'entity_id' not in d and (domain_list[i] in DOMAIN_SERVICE_WITH_ENTITY_ID or (domain_list[i] not in DOMAIN_SERVICE_WITHOUT_ENTITY_ID and entity_id.startswith(domain_list[i]+'.'))):
+                                d.update(data)
+                    else:
+                        service_list[0] = translation
+                else:
+                    service_list[0] = self._prase_action_p2h(action)
+
+                for i in range(len(domain_list)):
+                    _LOGGER.debug("[%s] %s @task_%s: domain = %s, servcie = %s, data = %s", LOGGER_NAME, entity_id, i, domain_list[i], service_list[i], data_list[i])
+                    with AsyncTrackStates(self._hass) as changed_states:
+                        try:
+                            result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
+                        except (vol.Invalid, ServiceNotFound):
+                            _LOGGER.error("[%s] %s @task_%s: failed to call service\n%s", LOGGER_NAME, entity_id, i, traceback.format_exc())
+                        else:
+                            if result:
+                                _LOGGER.debug("[%s] %s @task_%s: success to call service, new state = %s", LOGGER_NAME, entity_id, i, self._hass.states.get(entity_id))
+                                success_task.append({entity_id: [domain_list[i], service_list[i], data_list[i]]})
+                            else:
+                                _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
+                    _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
         if not success_task:
             return self._errorResult('IOT_DEVICE_OFFLINE'), None
         # wait 1s for updating state of entity

@@ -14,6 +14,10 @@ class VoiceControllDevice:
         self._id = None
 
     @property
+    def custom_actions(self):
+        return self._raw_attributes.get('actions', {})
+
+    @property
     def raw_attributes(self):
         return self._raw_attributes
 
