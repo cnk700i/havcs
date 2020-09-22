@@ -98,6 +98,9 @@ class VoiceControlProcessor:
             domain_list = [cmnd[0] for cmnd in device.custom_actions[ha_action]]
             service_list = [cmnd[1] for cmnd in device.custom_actions[ha_action]]
             data_list = [eval(cmnd[2]) for cmnd in device.custom_actions[ha_action]]
+            _LOGGER.debug("[%s] prepared domain_list: %s", LOGGER_NAME, domain_list)
+            _LOGGER.debug("[%s] prepared service_list: %s", LOGGER_NAME, service_list)
+            _LOGGER.debug("[%s] prepared data_list: %s", LOGGER_NAME, data_list)
             for i in range(len(domain_list)):
                 _LOGGER.debug("[%s] %s : domain = %s, servcie = %s, data = %s", LOGGER_NAME, i, domain_list[i], service_list[i], data_list[i])
                 with AsyncTrackStates(self._hass) as changed_states:
@@ -152,6 +155,7 @@ class VoiceControlProcessor:
                                 _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
                     _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
         if not success_task:
+            _LOGGER.debug("[%s] fail to control device, return 'IOT_DEVICE_OFFLINE' message.", LOGGER_NAME)
             return self._errorResult('IOT_DEVICE_OFFLINE'), None
         # wait 1s for updating state of entity
         await asyncio.sleep(1)
