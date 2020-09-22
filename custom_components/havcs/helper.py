@@ -94,7 +94,7 @@ class VoiceControlProcessor:
 
         # 优先使用配置的自定义action，处理逻辑：直接调用自定义service方法
         ha_action = self._prase_action_p2h(action)
-        if ha_action in device.custom_actions:
+        if device.custom_actions.get(ha_action):
             domain_list = [cmnd[0] for cmnd in device.custom_actions[ha_action]]
             service_list = [cmnd[1] for cmnd in device.custom_actions[ha_action]]
             data_list = [eval(cmnd[2]) for cmnd in device.custom_actions[ha_action]]
