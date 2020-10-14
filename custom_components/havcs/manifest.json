@@ -4,6 +4,5 @@
   "documentation": "https://ljr.im",
   "config_flow": true,
   "requirements": ["paho-mqtt>=1.4.0", "pycryptodome>=3.9.8"],
-  "dependencies": ["mqtt"],
   "codeowners": ["@cnk700i"]
 }
