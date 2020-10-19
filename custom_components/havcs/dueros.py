@@ -24,7 +24,8 @@ class PlatformParameter:
         'humidity': 'humidity',
         'pm25': 'pm2.5',
         'co2': 'co2',
-        'power_state': 'turnOnState'
+        'power_state': 'turnOnState',
+        'mode': 'mode'
     }
     device_action_map_h2p ={
         'turn_on': 'turnOn',
@@ -43,6 +44,7 @@ class PlatformParameter:
         # 'query_power_state': 'getTurnOnState',
         'query_temperature': 'getTemperatureReading',
         'query_humidity': 'getHumidity',
+        'set_mode': 'setMode'
         # '': 'QueryWindSpeed',
         # '': 'QueryBrightness',
         # '': 'QueryFog',
@@ -106,6 +108,10 @@ class PlatformParameter:
         }
 
     _service_map_p2h = {
+        # 模式和平台设备类型不影响
+        'fan': {
+            'SetModeRequest': lambda state, attributes, payload: (['fan'], ['set_speed'], [{"speed": payload['mode']['value'].lower()}])
+        },
         'cover': {
             'TurnOnRequest':  'open_cover',
             'TurnOffRequest': 'close_cover',
@@ -239,8 +245,8 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
         for device_property in device_properties:
             name = self.device_attribute_map_h2p.get(device_property.get('attribute'))
             state = self._hass.states.get(device_property.get('entity_id'))
-            if name and state:
-                value = state.state
+            if name:
+                value = state.state if state else 'unavailable'
                 if name == 'temperature':
                     scale = 'CELSIUS'
                     legalValue = 'DOUBLE'
@@ -260,12 +266,15 @@ class VoiceControlDueros(PlatformParameter, VoiceControlProcessor):
                     scale = 'ppm'
                     legalValue = 'INTEGER'
                 elif name == 'turnOnState':
-                    if state.state != 'off':
-                        value = 'ON'
-                    else:
+                    if value != 'on':
                         value = 'OFF'
+                    else:
+                        value = 'ON'
                     scale = ''
                     legalValue = '(ON, OFF)'
+                elif name == 'mode':
+                    scale = ''
+                    legalValue = '(POWERFUL, NORMAL, QUIET)'
                 else:
                     _LOGGER.warning("[%s] %s has unsport attribute %s", LOGGER_NAME, device_property.get('entity_id'), name)
                     continue

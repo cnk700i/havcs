@@ -385,6 +385,7 @@ async def async_setup_entry(hass, config_entry):
                 md5_l = hashlib.md5()
                 md5_l.update(ca_bytes)
                 latest_ca_md5 = md5_l.hexdigest()
+                _LOGGER.debug("[init] remote ca.crt md5 %s", latest_ca_md5)
                 if local_ca_md5 != latest_ca_md5:
                     _LOGGER.error("[init] can not connect to mqtt server(host = %s, port = %s), try update ca.crt file ",setting_conf[CONF_BROKER], setting_conf[CONF_PORT])
                 else:

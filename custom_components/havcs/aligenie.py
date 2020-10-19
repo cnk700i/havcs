@@ -58,10 +58,13 @@ class PlatformParameter:
         'set_temperature': 'SetTemperature',
         'set_color': 'SetColor',
         'pause': 'Pause',
+        'continue': 'Continue',
+        'play': 'Play',
         'query_color': 'QueryColor',
         'query_power_state': 'QueryPowerState',
         'query_temperature': 'QueryTemperature',
         'query_humidity': 'QueryHumidity',
+        'set_mode': 'SetMode'
         # '': 'QueryWindSpeed',
         # '': 'QueryBrightness',
         # '': 'QueryFog',
@@ -129,6 +132,16 @@ class PlatformParameter:
         }
 
     _service_map_p2h = {
+        # 测试，暂无找到播放指定音乐话术，继续播放指令都是Play
+        # 'media_player': {
+        #     'Play': lambda state, attributes, payload: (['play_media'], ['play_media'], [{"media_content_id": payload['value'], "media_content_type": "playlist"}]),
+        #     'Pause': 'media_pause',
+        #     'Continue': 'media_play'
+        # },
+        # 模式和平台设备类型有关，自动模式 静音模式 睡眠风模式（fan类型） 睡眠模式（airpurifier类型）
+        'fan': {
+            'SetMode': lambda state, attributes, payload: (['fan'], ['set_speed'], [{"speed": payload['value']}])
+        },
         'cover': {
             'TurnOn':  'open_cover',
             'TurnOff': 'close_cover',
@@ -254,8 +267,9 @@ class VoiceControlAligenie(PlatformParameter, VoiceControlProcessor):
         for device_property in device_properties:
             name = self.device_attribute_map_h2p.get(device_property.get('attribute'))
             state = self._hass.states.get(device_property.get('entity_id'))
-            if name and state:
-                properties += [{'name': name.lower(), 'value': state.state}]
+            if name:
+                value = state.state if state else 'unavailable'
+                properties += [{'name': name.lower(), 'value': value}]
         return properties if properties else [{'name': 'powerstate', 'value': 'off'}]
     
     def _discovery_process_actions(self, device_properties, raw_actions):

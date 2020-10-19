@@ -124,7 +124,7 @@ class VoiceControlProcessor:
                 data_list = [data]
                 service_list =['']
 
-                if domain in self._service_map_p2h.keys():
+                if action in self._service_map_p2h.get(domain, []) :
                     translation = self._service_map_p2h[domain][action]
                     if callable(translation):
                         state = self._hass.states.get(entity_id)
@@ -140,6 +140,7 @@ class VoiceControlProcessor:
                 else:
                     service_list[0] = self._prase_action_p2h(action)
 
+                _LOGGER.debug("[%s] ---excute tasks of %s: start", LOGGER_NAME, entity_id)
                 for i in range(len(domain_list)):
                     _LOGGER.debug("[%s] %s @task_%s: domain = %s, servcie = %s, data = %s", LOGGER_NAME, entity_id, i, domain_list[i], service_list[i], data_list[i])
                     with AsyncTrackStates(self._hass) as changed_states:
@@ -154,6 +155,7 @@ class VoiceControlProcessor:
                             else:
                                 _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
                     _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
+                _LOGGER.debug("[%s] ---excute tasks of %s: end", LOGGER_NAME, entity_id)
         if not success_task:
             _LOGGER.debug("[%s] fail to control device, return 'IOT_DEVICE_OFFLINE' message.", LOGGER_NAME)
             return self._errorResult('IOT_DEVICE_OFFLINE'), None
@@ -391,6 +393,8 @@ class VoiceControlDeviceManager:
                 _LOGGER.debug("[%s] unsupport sensor %s", LOGGER_NAME, entity_id)
             if not attributes_constrains or attribute in attributes_constrains:
                 properties = [{'entity_id': entity_id, 'attribute': attribute}]
+        elif entity_id.startswith('fan.') or entity_id.startswith('climate.'):
+            properties = [{'entity_id': entity_id, 'attribute': 'power_state'}, {'entity_id': entity_id, 'attribute': 'mode'}]
         else:
             properties = [{'entity_id': entity_id, 'attribute': 'power_state'}]
         return properties

@@ -49,7 +49,8 @@ class PlatformParameter:
         'query_power_state': 'QueryPowerState',
         'query_temperature': 'QueryTemperature',
         'query_humidity': 'QueryHumidity',
-        'query_pm25': 'QueryPM25'
+        'query_pm25': 'QueryPM25',
+        'set_mode': 'SetMode'
     }
     _device_type_alias = {
         'WASHING_MACHINE': '洗衣机',
@@ -88,6 +89,10 @@ class PlatformParameter:
         }
 
     _service_map_p2h = {
+        # 模式和平台设备类型不影响
+        'fan': {
+            'SetModeRequest': lambda state, attributes, payload: (['fan'], ['set_speed'], [{"speed": payload['properties']['value'].lower()}])
+        },
         'cover': {
             'TurnOnRequest':  'open_cover',
             'TurnOffRequest': 'close_cover',

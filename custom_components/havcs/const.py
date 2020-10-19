@@ -83,6 +83,10 @@ DEVICE_PLATFORM_DICT = {
     }
 }
 DEVICE_TYPE_DICT = {
+    'airpurifier': {
+        'cn_name': '空气净化器',
+        'icon': 'mdi-air-conditioner'
+    },
     'climate': {
         'cn_name': '空调',
         'icon': 'mdi-air-conditioner'
@@ -140,10 +144,27 @@ DEVICE_ACTION_DICT ={
     },
     'decrease_brightness': {
         'cn_name': '调低亮度'
+    },
+    'set_mode': {
+        'cn_name': '设置模式'
+    },
+    'play': {
+        'cn_name': '播放'
+    },
+    'pause': {
+        'cn_name': '暂停'
+    },
+    'continue': {
+        'cn_name': '继续'
     }
 }
 
 DEVICE_ATTRIBUTE_DICT = {
+    'power_state': {
+        'scale': '',
+        'legalValue': '(ON, OFF)',
+        'cn_name': '电源'
+    },    
     'temperature': {
         'scale': '°C',
         'legalValue': 'DOUBLE',
@@ -179,9 +200,9 @@ DEVICE_ATTRIBUTE_DICT = {
         'legalValue': 'INTEGER',
         'cn_name': '二氧化碳浓度'
     },
-    'power_state': {
+    'mode': {
         'scale': '',
-        'legalValue': '(on, off)',
-        'cn_name': '电源'
-    }   
+        'legalValue': '',
+        'cn_name': '工作模式'
+    },  
 }
