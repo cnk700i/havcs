@@ -389,6 +389,7 @@ class HavcsDeviceView(HomeAssistantView):
                     save_yaml(self._hass.data[INTEGRATION][CONF_DEVICE_CONFIG_PATH], self._hass.data[INTEGRATION][DATA_HAVCS_ITEMS])
                     return self.json({ 'code': 'ok', 'Msg': '成功新增/更新设备', 'data':{'device_id': device_id}})
                 except er.Invalid as e:
+                    _LOGGER.error(repr(e))
                     msg = '属性校验失败：' + e.msg + ' @ data'
                     for path in e.path:
                         msg += '[' + str(path) + ']'
@@ -451,7 +452,7 @@ class HavcsHttpManager:
         self._hass.http.register_view(HavcsSettingsView(self._hass,self._settings_schema))
 
     async def async_check_http_oauth(self, triggered=None):
-        _LOGGER.debug("[%s] check accessibility from local", LOGGER_NAME)
+        _LOGGER.debug("[%s] check accessibility from local, base_url = %s", LOGGER_NAME, self._ha_url)
         try:
             if self._retry_remove is not None:
                 self._retry_remove()
@@ -461,7 +462,7 @@ class HavcsHttpManager:
             with async_timeout.timeout(5, loop= self._hass.loop):
                 response = await session.get(self._ha_url + '/havcs/auth/authorize')
             if response.status == 401:
-                _LOGGER.debug("[%s][check] access success: url = %s, status = %s", LOGGER_NAME, self._ha_url + '/havcs/auth/authorize', response.status)
+                _LOGGER.debug("[%s][check] aouth service is running: url = %s, status = %s", LOGGER_NAME, self._ha_url + '/havcs/auth/authorize', response.status)
         except (asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.debug("[%s][check] retry check after 15s", LOGGER_NAME)
             self._retry_times -= 1
@@ -470,7 +471,7 @@ class HavcsHttpManager:
                     self._hass, self.async_check_http_oauth, timedelta(seconds=15)
                 )
             else:
-                _LOGGER.error("[%s][check] can not access http, check `ha_url` in configuration.yml", LOGGER_NAME)
-        except Exception:
-            _LOGGER.exception("[%s][check] unexpected error occur", LOGGER_NAME)
+                _LOGGER.error("[%s][check] fail to check aouth service's status, check `ha_url` in configuration.yml", LOGGER_NAME)
+        except Exception as e:
+            _LOGGER.exception("[%s][check] unexpected error occur: %s", LOGGER_NAME, repr(e))
             raise

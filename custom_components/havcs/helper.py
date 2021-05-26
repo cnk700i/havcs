@@ -7,7 +7,7 @@ import traceback
 
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.helpers.state import AsyncTrackStates
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, Context
 
 from .const import DATA_HAVCS_SETTINGS, INTEGRATION, DATA_HAVCS_ITEMS, ATTR_DEVICE_VISABLE, ATTR_DEVICE_ID, ATTR_DEVICE_ENTITY_ID, ATTR_DEVICE_TYPE, ATTR_DEVICE_NAME, ATTR_DEVICE_ZONE, ATTR_DEVICE_ATTRIBUTES, ATTR_DEVICE_ACTIONS, ATTR_DEVICE_PROPERTIES
 from .device import VoiceControllDevice
@@ -18,7 +18,7 @@ LOGGER_NAME = 'helper'
 
 DOMAIN_SERVICE_WITHOUT_ENTITY_ID = ['climate']
 DOMAIN_SERVICE_WITH_ENTITY_ID = ['common_timer']
-
+CONTEXT = Context()
 class VoiceControlProcessor:
     def _discovery_process_propertites(self, device_properties) -> None:
         raise NotImplementedError()
@@ -103,17 +103,21 @@ class VoiceControlProcessor:
             _LOGGER.debug("[%s] prepared data_list: %s", LOGGER_NAME, data_list)
             for i in range(len(domain_list)):
                 _LOGGER.debug("[%s] %s : domain = %s, servcie = %s, data = %s", LOGGER_NAME, i, domain_list[i], service_list[i], data_list[i])
-                with AsyncTrackStates(self._hass) as changed_states:
-                    try:
-                        result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
-                    except (vol.Invalid, ServiceNotFound):
-                        _LOGGER.error("[%s] %s : failed to call service\n%s", LOGGER_NAME, i, traceback.format_exc())
+
+                try:
+                    result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], blocking=True, context = CONTEXT)
+                except (vol.Invalid, ServiceNotFound):
+                    _LOGGER.error("[%s] %s : failed to call service\n%s", LOGGER_NAME, i, traceback.format_exc())
+                else:
+                    if result:
+                        _LOGGER.debug("[%s] %s : success to call service", LOGGER_NAME, i)
+                        success_task.append({i: [domain_list[i], service_list[i], data_list[i]]})
                     else:
-                        if result:
-                            _LOGGER.debug("[%s] %s : success to call service", LOGGER_NAME, i)
-                            success_task.append({i: [domain_list[i], service_list[i], data_list[i]]})
-                        else:
-                            _LOGGER.debug("[%s] %s : failed to call service", LOGGER_NAME, i)
+                        _LOGGER.debug("[%s] %s : failed to call service", LOGGER_NAME, i)
+                changed_states = []
+                for state in self._hass.states.async_all():
+                    if state.context is CONTEXT:
+                        changed_states.append(state)
                 _LOGGER.debug("[%s] %s : changed_states = %s", LOGGER_NAME, i, changed_states)
         # 自动处理action，处理逻辑：对device的所有entity，执行action对应的service方法
         else:
@@ -143,17 +147,20 @@ class VoiceControlProcessor:
                 _LOGGER.debug("[%s] ---excute tasks of %s: start", LOGGER_NAME, entity_id)
                 for i in range(len(domain_list)):
                     _LOGGER.debug("[%s] %s @task_%s: domain = %s, servcie = %s, data = %s", LOGGER_NAME, entity_id, i, domain_list[i], service_list[i], data_list[i])
-                    with AsyncTrackStates(self._hass) as changed_states:
-                        try:
-                            result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], True)
-                        except (vol.Invalid, ServiceNotFound):
-                            _LOGGER.error("[%s] %s @task_%s: failed to call service\n%s", LOGGER_NAME, entity_id, i, traceback.format_exc())
+                    try:
+                        result = await self._hass.services.async_call(domain_list[i], service_list[i], data_list[i], blocking=True, context = CONTEXT)
+                    except (vol.Invalid, ServiceNotFound):
+                        _LOGGER.error("[%s] %s @task_%s: failed to call service\n%s", LOGGER_NAME, entity_id, i, traceback.format_exc())
+                    else:
+                        if result:
+                            _LOGGER.debug("[%s] %s @task_%s: success to call service, new state = %s", LOGGER_NAME, entity_id, i, self._hass.states.get(entity_id))
+                            success_task.append({entity_id: [domain_list[i], service_list[i], data_list[i]]})
                         else:
-                            if result:
-                                _LOGGER.debug("[%s] %s @task_%s: success to call service, new state = %s", LOGGER_NAME, entity_id, i, self._hass.states.get(entity_id))
-                                success_task.append({entity_id: [domain_list[i], service_list[i], data_list[i]]})
-                            else:
-                                _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
+                            _LOGGER.debug("[%s] %s @task_%s: failed to call service", LOGGER_NAME, entity_id, i)
+                    changed_states = []
+                    for state in self._hass.states.async_all():
+                        if state.context is CONTEXT:
+                            changed_states.append(state)
                     _LOGGER.debug("[%s] %s @task_%s: changed_states = %s", LOGGER_NAME, entity_id, i, changed_states)
                 _LOGGER.debug("[%s] ---excute tasks of %s: end", LOGGER_NAME, entity_id)
         if not success_task:
