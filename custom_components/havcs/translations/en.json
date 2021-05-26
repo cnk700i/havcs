@@ -40,7 +40,8 @@
                     "jdwhale_id": "叮咚音箱Client Id（注意要以jdwhale开头）",
                     "jdwhale_secret": "叮咚音箱Client Secret",
                     "weixin_id": "叮咚音箱Client Id（注意要以jdwhale开头）",
-                    "weixin_secret": "叮咚音箱Client Secret"
+                    "weixin_secret": "叮咚音箱Client Secret",
+                    "ha_url": "HA url（留空自动检测，如有错误设置为http(s)://127.0.0.1:8123，端口号按实际调整）"
                 }
             }
         },

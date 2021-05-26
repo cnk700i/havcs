@@ -336,12 +336,13 @@ class HavcsDeviceView(HomeAssistantView):
         if os.path.isdir(local):
             hass.http.register_static_path('/havcs', local, False)
         panels = hass.data.setdefault(DATA_PANELS, {})
-        if INTEGRATION not in panels:
+        frontend_url_path = INTEGRATION+'_panel'
+        if frontend_url_path not in panels:
             hass.components.frontend.async_register_built_in_panel(
                 component_name = "iframe",
                 sidebar_title = 'HAVCS设备',
                 sidebar_icon = 'mdi:home-edit',
-                frontend_url_path = INTEGRATION+'_panel',
+                frontend_url_path = frontend_url_path,
                 config = {"url": '/havcs/index.html'},
                 require_admin = True
             )

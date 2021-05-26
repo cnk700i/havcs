@@ -189,9 +189,6 @@ class HavcsBindManager:
                         _LOGGER.error("[skill] fail to access %s, bind device fail: %s", url, traceback.format_exc())
     
     def sync_device(self):
-        remove_listener = self._sync_manager.get('remove_listener')
-        if remove_listener:
-            remove_listener()
     
         @callback
         def report_device(event):
@@ -222,9 +219,11 @@ class HavcsBindManager:
                             except:
                                 _LOGGER.error("[skill] fail to access %s, report device fail: %s", url, traceback.format_exc())
         
+        self.clear()
         self._sync_manager['remove_listener'] = self._hass.bus.async_listen(EVENT_STATE_CHANGED, report_device)
 
     def clear(self):
         remove_listener = self._sync_manager.get('remove_listener')
         if remove_listener:
-            remove_listener() 
+            remove_listener()
+            self._sync_manager.pop('remove_listener')

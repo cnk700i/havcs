@@ -704,7 +704,7 @@ async def async_unload_entry(hass, config_entry):
             hass.data[DOMAIN].pop(DATA_HAVCS_HTTP_MANAGER)
             hass.data[DOMAIN].pop(CONF_DEVICE_CONFIG_PATH)
             hass.data[DOMAIN].pop(CONF_SETTINGS_CONFIG_PATH)
-            hass.components.frontend.async_remove_panel(DOMAIN)
+            hass.components.frontend.async_remove_panel(DOMAIN+'_panel')
             if not hass.data[DOMAIN]:
                 hass.data.pop(DOMAIN)
             

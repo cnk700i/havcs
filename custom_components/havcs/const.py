@@ -36,6 +36,7 @@ CONF_SKIP_TEST  = 'skip_test'
 CONF_DEVICE_CONFIG = 'device_config'
 CONF_DEVICE_CONFIG_PATH = 'device_config_path'
 CONF_SETTINGS_CONFIG_PATH = 'settings_config_path'
+CONF_HA_URL = 'ha_url'
 
 CONF_MODE = 'mode'
 
