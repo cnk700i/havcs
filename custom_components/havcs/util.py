@@ -96,7 +96,7 @@ def get_token_from_command(command):
 
 async def async_update_token_expiration(access_token, hass, expiration):
     try:
-        if version.parse(jwt.__version__ < "2.0.0"):
+        if version.parse(jwt.__version__) < version.parse("2.0.0"):
             unverif_claims = jwt.decode(access_token, verify=False)
         else:
             unverif_claims = jwt.decode(
