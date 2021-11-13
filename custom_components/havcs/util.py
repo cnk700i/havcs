@@ -100,7 +100,7 @@ async def async_update_token_expiration(access_token, hass, expiration):
             unverif_claims = jwt.decode(access_token, verify=False)
         else:
             unverif_claims = jwt.decode(
-                token, algorithms=["HS256"], options={"verify_signature": False}
+                access_token, algorithms=["HS256"], options={"verify_signature": False}
             )
         refresh_token = await hass.auth.async_get_refresh_token(cast(str, unverif_claims.get('iss')))
         for user in hass.auth._store._users.values():
