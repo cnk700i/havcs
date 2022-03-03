@@ -104,7 +104,7 @@ class HavcsAuthorizeView(HomeAssistantView):
         if login_attemp['count'] >= 5 and datetime.now() - login_attemp['first_time'] < timedelta(minutes=1):
             _LOGGER.info("[%s][auth]Too many login attempts Login attempt with invalid authentication", LOGGER_NAME)
             return web.Response(body='403 (╯‵□′)╯︵ ┴─┴ 失败尝试次数过多暂时拉入小黑屋', status=403)
-        
+
         client_id = parts.scheme + '://' + parts.netloc
         data = {
             "client_id": client_id,
@@ -232,7 +232,10 @@ class HavcsTokenView(HomeAssistantView):
                 result['expires_in'] = int(self._expiration.total_seconds())
                 _LOGGER.debug("[%s][auth] get access token[%s] with default expiration, try to update expiration param and get new access token through another refresh token request.", LOGGER_NAME, result.get('access_token'))
                 access_token = result.get('access_token')
-                await havcs_util.async_update_token_expiration(access_token, self._hass, self._expiration)
+                done = await havcs_util.async_update_token_expiration(access_token, self._hass, self._expiration)
+                if not done:
+                    _LOGGER.error("[%s][auth] update token expiration failed.", LOGGER_NAME, self._token_url)
+                    return web.Response(status=500)
 
                 try:
                     refresh_token_data = {'client_id': data.get('client_id'), 'grant_type': 'refresh_token', 'refresh_token': result.get('refresh_token')}
@@ -242,7 +245,7 @@ class HavcsTokenView(HomeAssistantView):
                 except(asyncio.TimeoutError, aiohttp.ClientError):
                     _LOGGER.error("[%s][auth] fail to get new access token, access %s in local network: timeout", LOGGER_NAME, self._token_url)
                     return web.Response(status=response.status)
-                
+
                 try:
                     refresh_token_result = await response.json()
                     _LOGGER.debug("[%s][auth] get new access token[%s] with new expiration.", LOGGER_NAME, refresh_token_result.get('access_token'))
@@ -287,7 +290,7 @@ class HavcsSettingsView(HomeAssistantView):
     def __init__(self, hass, settings_schema):
         self._hass = hass
         self._settings_schema = settings_schema
-    
+
     async def get(self, request):
         return web.Response(body='404 (￣ε￣) 访问到空气页面 (￣з￣)', status=404)
 
@@ -313,7 +316,7 @@ class HavcsSettingsView(HomeAssistantView):
                     return self.json({ 'code': 'error', 'Msg': msg})
                 except Exception as e:
                     _LOGGER.error("[%s][device] fail to update settings (%s) : %s", LOGGER_NAME, settings, traceback.format_exc())
-                    return self.json({ 'code': 'error', 'Msg': repr(e)})      
+                    return self.json({ 'code': 'error', 'Msg': repr(e)})
         elif action == 'get':
             settings = self._hass.data[INTEGRATION][DATA_HAVCS_SETTINGS]
             if settings:
@@ -331,7 +334,7 @@ class HavcsDeviceView(HomeAssistantView):
     def __init__(self, hass, device_schema):
         self._hass = hass
         self._device_schema = device_schema
-        
+
         local = hass.config.path("custom_components/" + INTEGRATION + "/html")
         if os.path.isdir(local):
             hass.http.register_static_path('/havcs', local, False)
@@ -399,7 +402,7 @@ class HavcsDeviceView(HomeAssistantView):
                 except Exception as e:
                     _LOGGER.error("[%s][device] fail to update device (%s: %s) : %s", LOGGER_NAME, device_id, device, traceback.format_exc())
                     return self.json({ 'code': 'error', 'Msg': repr(e)})
-        elif action == 'export': 
+        elif action == 'export':
             response = web.FileResponse(os.path.join(self._hass.config.config_dir, 'havcs-ui.yaml'), headers={'Content-Disposition': 'havcs-ui.yaml'})
             response.enable_compression()
             return response
@@ -433,7 +436,7 @@ class HavcsHttpManager:
         self._expiration = None
         self._device_schema = device_schema
         self._settings_schema = settings_schema
-    
+
     def set_expiration(self, expiration):
         self._expiration = expiration
 
